@@ -1,0 +1,263 @@
+<?php
+
+namespace AcMarche\Mercredi\Facture\Repository;
+
+use AcMarche\Mercredi\Doctrine\OrmCrudTrait;
+use AcMarche\Mercredi\Entity\Facture\Facture;
+use AcMarche\Mercredi\Entity\Scolaire\Ecole;
+use AcMarche\Mercredi\Entity\Tuteur;
+use DateTimeInterface;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\Persistence\ManagerRegistry;
+
+/**
+ * @method Facture|null find($id, $lockMode = null, $lockVersion = null)
+ * @method Facture|null findOneBy(array $criteria, array $orderBy = null)
+ * @method Facture[]    findAll()
+ * @method Facture[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ */
+final class FactureRepository extends ServiceEntityRepository
+{
+    use OrmCrudTrait;
+
+    public function __construct(ManagerRegistry $managerRegistry)
+    {
+        parent::__construct($managerRegistry, Facture::class);
+    }
+
+    public function getQBl(): QueryBuilder
+    {
+        return $this->createQueryBuilder('facture')
+            ->leftJoin('facture.tuteur', 'tuteur', 'WITH')
+            ->leftJoin('facture.factureReductions', 'factureReductions', 'WITH')
+            ->leftJoin('facture.factureComplements', 'factureComplements', 'WITH')
+            ->leftJoin('facture.facturePresences', 'facturePresences', 'WITH')
+            ->addSelect('tuteur', 'factureReductions', 'factureComplements', 'facturePresences');
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findByTuteur(Tuteur $tuteur): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.tuteur = :tuteur')
+            ->setParameter('tuteur', $tuteur)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @param Tuteur $tuteur
+     * @param DateTimeInterface $date
+     * @return Facture|null
+     */
+    public function findByTuteurAndMonth(Tuteur $tuteur, DateTimeInterface $date): ?Facture
+    {
+        return $this->getQBl()
+            ->andWhere('facture.tuteur = :tuteur')
+            ->setParameter('tuteur', $tuteur)
+            ->andWhere('facture.mois LIKE :date')
+            ->setParameter('date', $date->format('m-Y'))
+            ->getQuery()->getOneOrNullResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findByTuteurNotPaid(Tuteur $tuteur): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.tuteur = :tuteur')
+            ->setParameter('tuteur', $tuteur)
+            ->andWhere('facture.payeLe IS NULL')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findFacturesByTuteurWhoIsSend(Tuteur $tuteur): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.tuteur = :tuteur')
+            ->setParameter('tuteur', $tuteur)
+            ->andWhere('facture.envoyeLe IS NOT NULL')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findFacturesByMonth(string $month): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.mois = :mois')
+            ->setParameter('mois', $month)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findFacturesByMonthNotPaid(string $month): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.mois = :mois')
+            ->setParameter('mois', $month)
+            ->andWhere('facture.payeLe IS NULL')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findFacturesByMonthNotSendAndNotPaid(string $month): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.mois = :mois')
+            ->setParameter('mois', $month)
+            ->andWhere('facture.payeLe IS NULL')
+            ->andWhere('facture.envoyeLe IS NULL')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findFacturesByMonthOnlyPaper(string $month): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.mois = :mois')
+            ->setParameter('mois', $month)
+            ->andWhere('tuteur.facture_papier = 1')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function search(
+        ?int $numero,
+        ?string $tuteur,
+        ?string $enfant,
+        ?Ecole $ecole,
+        ?bool $paye,
+        ?DateTimeInterface $datePaiement,
+        ?string $monthYear = null,
+        ?string $communication = null
+    ): array {
+        $queryBuilder = $this->getQBl();
+
+        if (null !== $numero) {
+            $queryBuilder->andWhere('facture.id = :numero')
+                ->setParameter('numero', $numero);
+        }
+
+        if ($tuteur) {
+            $queryBuilder->andWhere('tuteur.nom LIKE :tuteur OR tuteur.prenom LIKE :tuteur')
+                ->setParameter('tuteur', '%'.$tuteur.'%');
+        }
+
+        if ($enfant) {
+            $queryBuilder->andWhere('facturePresences.nom LIKE :enfant OR facturePresences.prenom LIKE :enfant')
+                ->setParameter('enfant', '%'.$enfant.'%');
+        }
+
+        if (null !== $ecole) {
+            $queryBuilder->andWhere('facture.ecoles LIKE :ecole')
+                ->setParameter('ecole', '%'.$ecole.'%');
+        }
+
+        if (null !== $monthYear) {
+            $queryBuilder->andWhere('facture.mois = :monthYear')
+                ->setParameter('monthYear', $monthYear);
+        }
+
+        if (null !== $communication) {
+            $queryBuilder->andWhere('facture.communication LIKE :commu')
+                ->setParameter('commu', '%'.$communication.'%');
+        }
+
+        if (null !== $datePaiement) {
+            $queryBuilder->andWhere('facture.payeLe LIKE :datePaiement')
+                ->setParameter('datePaiement', $datePaiement->format('Y-m-d').'%');
+        }
+
+        if (false === $paye) {
+            $queryBuilder->andWhere('facture.payeLe IS NULL');
+        }
+        if (true === $paye) {
+            $queryBuilder->andWhere('facture.payeLe IS NOT NULL');
+        }
+
+        return $queryBuilder->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findByTuteurAndPaidInYear(Tuteur $tuteur, int $year): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.tuteur = :tuteur')
+            ->setParameter('tuteur', $tuteur->getId())
+            ->andWhere('facture.payeLe LIKE :year')
+            ->setParameter('year', '%'.$year.'%')
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function findByMonthYearLike(int $year): array
+    {
+        return $this->getQBl()
+            ->andWhere('facture.mois LIKE :year')
+            ->setParameter('year', '%-'.$year)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * @return Facture[]
+     */
+    public function byEcoleAndMonth(
+        ?Ecole $ecole,
+        ?string $monthYear = null,
+    ): array {
+        $queryBuilder = $this->getQBl();
+
+        if (null !== $ecole) {
+            $queryBuilder->andWhere('facture.ecoles LIKE :ecole')
+                ->setParameter('ecole', '%'.$ecole.'%');
+        }
+
+        if (null !== $monthYear) {
+            $queryBuilder->andWhere('facture.mois = :monthYear')
+                ->setParameter('monthYear', $monthYear);
+        }
+
+        return $queryBuilder->getQuery()->getResult();
+    }
+
+    public function findByCommunication(string $communication): ?Facture
+    {
+        return $this->getQBl()
+            ->andWhere('facture.communication = :communication')
+            ->setParameter('communication', $communication)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * @param DateTimeInterface $date
+     * @return Facture[]
+     */
+    public function findByMonthYear(DateTimeInterface $date): array
+    {
+        return $this->getQBl()->andWhere('facture.mois LIKE :monthYear')
+            ->setParameter('monthYear', $date->format('m-Y').'%')
+            ->getQuery()
+            ->getResult();
+    }
+}

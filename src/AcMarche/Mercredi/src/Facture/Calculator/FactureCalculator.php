@@ -1,0 +1,189 @@
+<?php
+
+namespace AcMarche\Mercredi\Facture\Calculator;
+
+use AcMarche\Mercredi\Contrat\Facture\FactureCalculatorInterface;
+use AcMarche\Mercredi\Entity\Presence\Accueil;
+use AcMarche\Mercredi\Entity\Presence\Presence;
+use AcMarche\Mercredi\Facture\Dto\FactureDetailDto;
+use AcMarche\Mercredi\Facture\FactureInterface;
+use AcMarche\Mercredi\Facture\Repository\FactureComplementRepository;
+use AcMarche\Mercredi\Facture\Repository\FactureDecompteRepository;
+use AcMarche\Mercredi\Facture\Repository\FacturePresenceRepository;
+use AcMarche\Mercredi\Facture\Repository\FactureReductionRepository;
+use AcMarche\Mercredi\Reduction\Calculator\ReductionCalculator;
+
+class FactureCalculator implements FactureCalculatorInterface
+{
+    public function __construct(
+        private FacturePresenceRepository $facturePresenceRepository,
+        private FactureReductionRepository $factureReductionRepository,
+        private FactureComplementRepository $factureComplementRepository,
+        private FactureDecompteRepository $factureDecompteRepository,
+        private ReductionCalculator $reductionCalculator,
+    ) {
+    }
+
+    public function createDetail(FactureInterface $facture): FactureDetailDto
+    {
+        $factureDetail = new FactureDetailDto();
+        $factureDetail->totalPresences = $this->totalPresences($facture);
+        $factureDetail->totalAccueils = $this->totalAccueils($facture);
+        $factureDetail->totalReductionAmounts = $this->totalReductionAmounts($facture);
+        $factureDetail->totalComplementAmounts = $this->totalComplementAmounts($facture);
+
+        $factureDetail->totalHorsPourcentage = $factureDetail->totalPresences
+            + $factureDetail->totalAccueils
+            + $factureDetail->totalComplementAmounts
+            - $factureDetail->totalReductionAmounts;
+
+        /**
+         * represent a number in percentage like 5%
+         */
+        $factureDetail->totalReductionPourcentage = $this->totalReductionPourcentage($facture);
+        /**
+         * represent a number in percentage like 5%
+         */
+        $factureDetail->totalComplementPourcentage = $this->totalComplementPourcentage($facture);
+
+        $factureDetail->pourcentageEnPlus = $this->reductionCalculator->calculatePourcentage(
+            $factureDetail->totalComplementPourcentage,
+            $factureDetail->totalHorsPourcentage,
+        );
+
+        $factureDetail->pourcentageEnMoins = $this->reductionCalculator->calculatePourcentage(
+            $factureDetail->totalReductionPourcentage,
+            $factureDetail->totalHorsPourcentage,
+        );
+
+        $factureDetail->total = $factureDetail->totalHorsPourcentage + $factureDetail->pourcentageEnPlus - $factureDetail->pourcentageEnMoins;
+
+        if ($facture->getPayeLe()) {
+            $factureDetail->totalDu = 0;
+            $factureDetail->totalDecomptes = $factureDetail->total;
+        } else {
+            $factureDetail->totalDecomptes = $this->totalDecomptes($facture);
+            $factureDetail->totalDu = $factureDetail->total - $factureDetail->totalDecomptes;
+        }
+
+        return $factureDetail;
+    }
+
+    public function totalPresences(FactureInterface $facture): float
+    {
+        $facturePresences = $this->facturePresenceRepository->findByFactureAndType(
+            $facture,
+            FactureInterface::OBJECT_PRESENCE,
+        );
+
+        $cout = 0;
+        foreach ($facturePresences as $facturePresence) {
+            $cout += $facturePresence->getCoutCalculated();
+        }
+
+        return $cout;
+    }
+
+    public function totalAccueils(FactureInterface $facture): float
+    {
+        $factureAccueils = $this->facturePresenceRepository->findByFactureAndType(
+            $facture,
+            FactureInterface::OBJECT_ACCUEIL,
+        );
+
+        $cout = 0;
+
+        foreach ($factureAccueils as $factureAccueil) {
+            $cout += $factureAccueil->getCoutCalculated();
+        }
+
+        return $cout;
+    }
+
+    public function totalReductionAmounts(FactureInterface $facture): float
+    {
+        $reductionForfait = 0;
+        foreach ($this->factureReductionRepository->findByFacture($facture) as $reduction) {
+            if ($reduction->getAmount() > 0) {
+                $reductionForfait += $reduction->getAmount();
+            }
+        }
+
+        return $reductionForfait;
+    }
+
+    public function totalDecomptes(FactureInterface $facture): float|int
+    {
+        $total = 0;
+        foreach ($this->factureDecompteRepository->findByFacture($facture) as $decompte) {
+            $total += $decompte->getMontant();
+        }
+
+        return $total;
+    }
+
+    public function totalReductionPourcentage(FactureInterface $facture): float
+    {
+        $reductionPourcentage = 0;
+        foreach ($this->factureReductionRepository->findByFacture($facture) as $reduction) {
+            if ($reduction->getPourcentage() > 0) {
+                $reductionPourcentage += $reduction->getPourcentage();
+            }
+        }
+
+        return $reductionPourcentage;
+    }
+
+    public function totalComplementAmounts(FactureInterface $facture): float
+    {
+        $complementForfait = 0;
+        foreach ($this->factureComplementRepository->findByFacture($facture) as $complement) {
+            if ($complement->getAmount() > 0) {
+                $complementForfait += $complement->getAmount();
+            }
+        }
+
+        return $complementForfait;
+    }
+
+    public function totalComplementPourcentage(FactureInterface $facture): float
+    {
+        $complementPourcentage = 0;
+        foreach ($this->factureComplementRepository->findByFacture($facture) as $complement) {
+            if ($complement->getPourcentage() > 0) {
+                $complementPourcentage += $complement->getPourcentage();
+            }
+        }
+
+        return $complementPourcentage;
+    }
+
+    public function isPresencePaid(Presence $presence): bool
+    {
+        if ($presence->getPaiement()) {
+            return true;
+        }
+        $presenceFacture = $this->facturePresenceRepository->findByPresence($presence);
+        if ($presenceFacture) {
+            $facture = $presenceFacture->getFacture();
+            if ($facture->getPayeLe()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isAccueilPaid(Accueil $accueil): bool
+    {
+        $presenceFacture = $this->facturePresenceRepository->findByAccueil($accueil);
+        if ($presenceFacture) {
+            $facture = $presenceFacture->getFacture();
+            if ($facture->getPayeLe()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

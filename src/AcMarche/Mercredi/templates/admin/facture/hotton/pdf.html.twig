@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link href="{{ bootcdn }}" rel="stylesheet">
+    <link href="{{ absolute_url(asset('bundles/acmarchemercredi/css/print.css')) }}" rel="stylesheet" media="print">
+    <title>Facture</title>
+    <style>
+        .page-breaker {
+            display: block;
+            page-break-after: always;
+        }
+
+        @media print {
+            .new-page {
+                page-break-before: always;
+            }
+
+            .rouge {
+                color: #a94442;
+            }
+
+            .page-breaker {
+                display: block;
+                page-break-after: always;
+            }
+
+            .gras {
+                font-weight: bold;
+            }
+        }
+
+        table {
+            page-break-inside: auto
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto
+        }
+
+        thead {
+            display: table-header-group
+        }
+
+        tfoot {
+            display: table-footer-group
+        }
+    </style>
+</head>
+<body style="height: 297mm">
+<div class="container-fluid">
+    {{ content|raw }}
+</div>
+</body>

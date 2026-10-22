@@ -1,0 +1,94 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body -%}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>Rechercher des factures {% if search %} <span
+                    class="badge bg-info">{{ factures|length }}</span> {% endif %}</h3>
+        </div>
+
+        <div class="card-body">
+
+            {% include '@AcMarcheMercredi/admin/facture/_search.html.twig' %}
+
+            {% if search %}
+                <table class="table table-bordered table-hover">
+                    <thead>
+                    <tr>
+                        <th class="text-center">Numéro</th>
+                        <th class="text-center">Mois</th>
+                        <th class="text-center">Facturé à</th>
+                        <th class="text-center">Enfants</th>
+                        <th class="text-center">Payé le</th>
+                        <th class="text-center">Envoyé le</th>
+                        <th class="text-center">Communication</th>
+                        <th class="text-center">Montant de la facture</th>
+                        <th class="text-center">Montant payé</th>
+                        <th class="text-center">Solde dû</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for facture in factures %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('mercredi_admin_facture_show', { 'id': facture.id }) }}">
+                                    {{ facture.id }}
+                                </a>
+                            </td>
+                            <td>
+                                {{ facture.mois }}
+                            </td>
+                            <td>
+                                {{ facture.tuteur }}
+                            </td>
+                            <td>{{ facture.enfants|join(',') }}</td>
+                            <td>
+                                {{ facture.payeLe ? facture.payeLe | format_date('short') }}
+                            </td>
+                            <td>
+                                {% if facture.envoyeLe %}
+                                    {{ facture.envoyeLe | format_date('short') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ facture.communication }}
+                            </td>
+                            <td>
+                                {% if facture.factureDetailDto %}
+                                    {{ facture.factureDetailDto.total|format_currency('euro') }}
+                                {% endif %}
+                            </td>
+                            <td{% if facture.factureDetailDto and facture.factureDetailDto.totalDecomptes > facture.factureDetailDto.total %} class="text-danger fw-bold"{% endif %}>
+                                {% if facture.factureDetailDto %}
+                                    {{ facture.factureDetailDto.totalDecomptes|format_currency('euro') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if facture.factureDetailDto %}
+                                    {{ facture.factureDetailDto.totalDu|format_currency('euro') }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="10">
+                                Aucune facture trouvée
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <th colspan="7"><strong>Montant totaux</strong></th>
+                        <td><strong>{{ totalFactures|format_currency('euro') }}</strong></td>
+                        <td><strong>{{ totalPayes|format_currency('euro') }}</strong></td>
+                        <td><strong>{{ totalMontantDu|format_currency('euro') }}</strong></td>
+                    </tr>
+                    </tfoot>
+                </table>
+            {% endif %}
+
+        </div>
+    </div>
+{% endblock %}

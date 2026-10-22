@@ -1,0 +1,87 @@
+<div class="row">
+    <div class="col-6">
+        <table class="table table-bordered table-hover">
+            <thead>
+            <tr>
+                <th style="vertical-align: top;">Au nom de</th>
+                <td>
+                    {{ facture.nom }} {{ facture.prenom }}<br>
+                    <i class="fas fa-map-marked-alt"></i>
+                    {{ facture.rue }} <br/>
+                    {{ facture.codepostal }} {{ facture.localite }}
+                </td>
+            </tr>
+            <tr>
+                <th>Communication</th>
+                <td>{{ facture.communication }}</td>
+            </tr>
+            <tr>
+                <th>Pour le mois</th>
+                <td>{{ facture.mois }}</td>
+            </tr>
+            <tr>
+                <th>Ecole(s)</th>
+                <td>{{ facture.ecoles }}</td>
+            </tr>
+            </thead>
+        </table>
+    </div>
+    <div class="col-6">
+        <table class="table table-bordered table-hover">
+            <thead>
+            <tr>
+                <th>Générée le</th>
+                <td>{{ facture.factureLe | format_date('full') }}</td>
+            </tr>
+            <tr>
+                <th>Envoyé le</th>
+                <td>{{ facture.envoyeLe ? facture.envoyeLe | format_datetime('full', 'medium') }}</td>
+            </tr>
+            <tr>
+                <th>Envoyé à</th>
+                <td>{{ facture.envoyeA }}</td>
+            </tr>
+            <tr>
+                <th>Payé le</th>
+                <td>
+                    {% if facture.payeLe %}
+                        {{ facture.payeLe | format_date('full') }}
+                        {% if is_granted('ROLE_MERCREDI_ADMIN') %}
+                            <button type="button" class="btn btn-light btn-sm float-end" data-bs-toggle="modal"
+                                    data-bs-target="#unpaidModal">
+                                <i class="fas fa-minus-circle"></i> Annuler le paiement
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    Montant total de la facture
+                </th>
+                <td>{{ dto.total|format_currency('eur') }}</td>
+            </tr>
+            <tr>
+                <th>
+                    Total restant à payer
+                </th>
+                <td>{{ dto.totalDu|format_currency('eur') }}</td>
+            </tr>
+            {% if dto.totalDecomptes > 0 %}
+                <tr>
+                    <th>
+                        Total du décompte des paiements
+                    </th>
+                    <td>{{ dto.totalDecomptes|format_currency('eur') }}</td>
+                </tr>
+            {% endif %}
+            </thead>
+        </table>
+    </div>
+</div>
+
+{% if facture.remarque %}
+    <p class="text-muted">
+        {{ facture.remarque | nl2br }}
+    </p>
+{% endif %}

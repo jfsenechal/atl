@@ -1,0 +1,24 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body %}
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>Parent et enfant créé</h3>
+        </div>
+        <div class="card-body">
+
+            <a href="{{ path('mercredi_admin_enfant_new', { 'id' : tuteur.id }) }}" class="btn btn-primary"
+               role="button">
+                <i class="fas fa-plus"></i> Ajouter un autre enfant </a>
+            <br><br>
+            <strong>La fiche parent</strong> <a
+                    href="{{ path('mercredi_admin_tuteur_show', {'id': tuteur.id}) }}">{{ tuteur }}</a> bien été ajoutée
+            <br><br>
+            <strong>La fiche enfant</strong> <a
+                    href="{{ path('mercredi_admin_enfant_show',{'id': enfant.id}) }}">{{ enfant }}</a> a bien été
+            ajoutée
+            <br><br>
+            {% include '@AcMarcheMercrediAdmin/quick/_account_info.html.twig' %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,33 @@
+<table class="table table-bordered">
+    <thead>
+    <tr>
+        <th style="width: 20%">Date</th>
+        <th style="width: 20%">Tuteur</th>
+        <th style="width: 10%">Payé</th>
+        <th style="width: 50%">Remarque</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for presence in presences %}
+        <tr>
+            <td>
+                <a href="{{ path('mercredi_admin_presence_show', {'id': presence.id}) }}">
+                    {{ (presence.jour.dateJour | format_date('full'))|capitalize }}
+                    {% if presence.jour.pedagogique %}
+                        (P)
+                    {% endif %}
+                </a>
+            </td>
+            <td>
+                {{ presence.tuteur }}
+            </td>
+            <td>
+                {{ presence.paid ? 'Oui' : 'Non' }}
+            </td>
+            <td class="text-muted">
+                {{ presence.remarque }}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

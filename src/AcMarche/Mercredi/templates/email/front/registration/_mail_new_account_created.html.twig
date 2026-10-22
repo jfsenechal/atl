@@ -1,0 +1,25 @@
+{% extends '@AcMarcheMercredi/email/body.html.twig' %}
+{% block subject %}
+    <p class="lead">
+        {{ email.subject }}
+    </p>
+{% endblock %}
+
+{% block content %}
+    Le nouveau compte a été créé : <strong>{{ user.username }}</strong>
+    <br/><br/>
+    Nom: {{ user.nom }}<br/>
+    Prénom: {{ user.prenom }}<br/>
+    Téléphone: {{ user.telephone }}<br/>
+    <br/><br/>
+    Allez dans la gestion des utilisateurs<br/><br/>
+    <ul class="list-group">
+        <li class="list-group-item">Donnez le rôle "parent"</li>
+        <li class="list-group-item"><strong>Ajoutez une nouvelle fiche parent.</strong></li>
+    </ul>
+    <br/><br/>
+    <a href="{{ absolute_url(path('mercredi_admin_user_show', {'id': user.id})) }}">
+        Gestion de l'utilisateur
+    </a>
+{% endblock %}
+

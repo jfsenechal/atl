@@ -1,0 +1,23 @@
+mercredi_front:
+  resource: ../src/AcMarche/Mercredi/src/Controller/Front/
+  type: attribute
+
+mercredi_admin:
+  resource: ../src/AcMarche/Mercredi/src/Controller/Admin/
+  type: attribute
+  prefix: admin/
+
+mercredi_parent:
+  resource: ../src/AcMarche/Mercredi/src/Controller/Parent/
+  type: attribute
+  prefix: parent/
+
+mercredi_ecole:
+  resource: ../src/AcMarche/Mercredi/src/Controller/Ecole/
+  type: attribute
+  prefix: ecole/
+
+mercredi_animateur:
+  resource: ../src/AcMarche/Mercredi/src/Controller/Animateur/
+  type: attribute
+  prefix: animateur/

@@ -1,0 +1,28 @@
+{
+    "namespaces": [
+        {
+            "namespace": "AcMarcheMercredi",
+            "path": "src/AcMarche/Mercredi/templates"
+        },
+        {
+            "namespace": "AcMarcheMercrediAdmin",
+            "path": "src/AcMarche/Mercredi/templates/admin"
+        },
+        {
+            "namespace": "AcMarcheMercrediAnimateur",
+            "path": "src/AcMarche/Mercredi/templates/animateur"
+        },
+        {
+            "namespace": "AcMarcheMercrediFront",
+            "path": "src/AcMarche/Mercredi/templates/front"
+        },
+        {
+            "namespace": "AcMarcheMercrediParent",
+            "path": "src/AcMarche/Mercredi/templates/parent"
+        },
+        {
+            "namespace": "AcMarcheMercrediEcole",
+            "path": "src/AcMarche/Mercredi/templates/ecole"
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+<?php
+
+namespace AcMarche\Mercredi\Jour\MessageHandler;
+
+use AcMarche\Mercredi\Jour\Message\JourCreated;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+
+#[AsMessageHandler()]
+final class JourCreatedHandler
+{
+    private FlashBagInterface $flashBag;
+
+    public function __construct(RequestStack $requestStack)
+    {
+        $this->flashBag = $requestStack->getSession()?->getFlashBag();
+    }
+
+    public function __invoke(JourCreated $jourCreated): void
+    {
+        $this->flashBag->add('success', 'La date a bien été ajoutée');
+    }
+}

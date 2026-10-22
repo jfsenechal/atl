@@ -1,0 +1,39 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block title %}Enfant{% endblock %}
+
+{% block body %}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>{{ reduction }}</h3>
+        </div>
+        <div class="card-body">
+
+            {% include '@AcMarcheMercrediAdmin/reduction/_actions.html.twig' %}
+
+            {% if reduction.pourcentage %}
+                {{ reduction.pourcentage| format_number }} %
+            {% endif %}
+
+            {% if reduction.amount %}
+                <strong>Montant fixe: </strong> {{ reduction.amount | format_currency('eur') }}
+            {% endif %}
+
+            {% if reduction.isForfait %}
+                <br/> <strong>Il s'agit d'un forfait</strong>
+            {% endif %}
+
+            <br/>
+            <br/>
+
+            {{ reduction.remarque|nl2br }}
+            <br/>
+            <br/>
+            {% include '@AcMarcheMercrediAdmin/reduction/_list_presences.html.twig' %}
+        </div>
+    </div>
+
+    {% include '@AcMarcheMercrediAdmin/reduction/_delete_form.html.twig' %}
+
+{% endblock %}
