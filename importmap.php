@@ -16,38 +16,38 @@ return [
         'path' => './assets/app.js',
         'entrypoint' => true,
     ],
-    '@hotwired/stimulus' => [
-        'version' => '3.2.1',
-    ],
     '@symfony/stimulus-bundle' => [
         'path' => './vendor/symfony/stimulus-bundle/assets/dist/loader.js',
     ],
+    '@hotwired/stimulus' => [
+        'version' => '3.2.2',
+    ],
     '@hotwired/turbo' => [
-        'version' => '7.3.0',
+        'version' => '8.0.23',
     ],
     'tom-select' => [
-        'version' => '2.4.3',
+        'version' => '2.6.2',
     ],
     '@orchidjs/sifter' => [
         'version' => '1.1.0',
     ],
     '@orchidjs/unicode-variants' => [
-        'version' => '1.1.2',
+        'version' => '1.2.2',
     ],
     'tom-select/dist/css/tom-select.default.min.css' => [
-        'version' => '2.4.3',
+        'version' => '2.6.2',
         'type' => 'css',
     ],
     'tom-select/dist/css/tom-select.default.css' => [
-        'version' => '2.4.3',
+        'version' => '2.6.2',
         'type' => 'css',
     ],
     'tom-select/dist/css/tom-select.bootstrap4.css' => [
-        'version' => '2.4.3',
+        'version' => '2.6.2',
         'type' => 'css',
     ],
     'tom-select/dist/css/tom-select.bootstrap5.css' => [
-        'version' => '2.4.3',
+        'version' => '2.6.2',
         'type' => 'css',
     ],
     'bootstrap' => [
@@ -57,24 +57,20 @@ return [
         'version' => '2.11.8',
     ],
     'bootstrap/dist/css/bootstrap.min.css' => [
-        'version' => '5.3.3',
-        'type' => 'css',
-    ],
-    '@tabler/icons-webfont/tabler-icons.min.css' => [
-        'version' => '2.47.0',
+        'version' => '5.3.8',
         'type' => 'css',
     ],
     '@fortawesome/fontawesome-free/css/all.css' => [
-        'version' => '6.7.2',
+        'version' => '7.3.1',
         'type' => 'css',
     ],
     'sortablejs' => [
-        'version' => '1.15.6',
+        'version' => '1.15.7',
     ],
     'stimulus-lightbox' => [
         'version' => '3.2.0',
     ],
     'lightgallery' => [
-        'version' => '2.7.0',
+        'version' => '2.9.0',
     ],
 ];
