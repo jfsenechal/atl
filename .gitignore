@@ -22,6 +22,9 @@
 /data
 .idea
 *.sql
+/public/qrcode
+/public/uploads
+/public/files
 
 ###> liip/imagine-bundle ###
 /public/media/cache/
