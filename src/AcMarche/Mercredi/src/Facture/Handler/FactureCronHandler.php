@@ -7,10 +7,10 @@ use AcMarche\Mercredi\Facture\Repository\FactureCronRepository;
 use AcMarche\Mercredi\Facture\Repository\FactureRepository;
 use AcMarche\Mercredi\Mailer\Factory\AdminEmailFactory;
 use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
-use AcMarche\Mercredi\Mailer\NotificationMailer;
 use AcMarche\Mercredi\Tuteur\Utils\TuteurUtils;
 use Carbon\Carbon;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\Transport\TransportInterface;
 
 class FactureCronHandler
 {
@@ -19,10 +19,9 @@ class FactureCronHandler
         private FactureRepository $factureRepository,
         private FactureEmailFactory $factureEmailFactory,
         private FactureFactory $factureFactory,
-        private NotificationMailer $notificationMailer,
         private AdminEmailFactory $adminEmailFactory,
+        private TransportInterface $transport,
     ) {
-
     }
 
     public function execute(int $max = 40): array
@@ -68,8 +67,7 @@ class FactureCronHandler
                     $this->factureFactory->createOnePdf($facture, $cron->getMonthDate(), $cron->force_send);
                 } catch (\Exception $e) {
                     $error = 'Impossible de générer le pdf pour la facture: '.$facture->getId().' '.$e->getMessage();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur pdf facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
+                    $this->sendAlert('Erreur pdf facture', $error);
                     $result[] = ['message' => $facture->getId().' error create pdf '.$e->getMessage()];
                     continue;
                 }
@@ -79,8 +77,7 @@ class FactureCronHandler
 
                 if (\count($emails) < 1) {
                     $error = 'Pas de mail pour la facture: '.$facture->getId();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
+                    $this->sendAlert('Erreur envoie facture', $error);
                     $result[] = ['message' => $facture->getId().' pas de mail '.$error];
                     continue;
                 }
@@ -91,18 +88,18 @@ class FactureCronHandler
                     $this->factureEmailFactory->attachFactureFromPath($messageFacture, $facture);
                 } catch (\Exception $e) {
                     $error = 'Pas de pièce jointe pour la facture: '.$facture->getId().' '.$e->getMessage();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
+                    $this->sendAlert('Erreur envoie facture', $error);
                     $result[] = ['message' => $facture->getId().' error attach '.$error];
                     continue;
                 }
 
                 try {
-                    $this->notificationMailer->sendMail($messageFacture);
+                    // Envoi direct par le transport : pas de file Messenger, la facture
+                    // n'est marquée envoyée que si le serveur SMTP a accepté le mail
+                    $this->transport->send($messageFacture);
                 } catch (TransportExceptionInterface $e) {
                     $error = 'Facture num '.$facture->getId().' '.$e->getMessage();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
+                    $this->sendAlert('Erreur envoie facture', $error);
                     $result[] = ['message' => $facture->getId().' error envoie '.$error];
                     continue;
                 }
@@ -125,6 +122,18 @@ class FactureCronHandler
     public function sendResult(array $result): void
     {
         $message = $this->adminEmailFactory->messageToJf('Result envoie facture', json_encode($result));
-        $this->notificationMailer->sendAsEmailNotification($message);
+        $this->transport->send($message);
+    }
+
+    /**
+     * Alerte envoyée en direct à l'admin. Un échec d'envoi ne doit pas interrompre
+     * le lot : l'erreur figure déjà dans le résultat de l'exécution.
+     */
+    private function sendAlert(string $subject, string $error): void
+    {
+        try {
+            $this->transport->send($this->adminEmailFactory->messageAlert($subject, $error));
+        } catch (TransportExceptionInterface) {
+        }
     }
 }

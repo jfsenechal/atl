@@ -2,109 +2,67 @@
 
 namespace AcMarche\Mercredi\Command;
 
-use AcMarche\Mercredi\Facture\Repository\FactureCronRepository;
-use AcMarche\Mercredi\Facture\Repository\FactureRepository;
-use AcMarche\Mercredi\Mailer\Factory\AdminEmailFactory;
-use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
-use AcMarche\Mercredi\Mailer\NotificationMailer;
-use AcMarche\Mercredi\Tuteur\Utils\TuteurUtils;
-use DateTime;
-use Exception;
+use AcMarche\Mercredi\Facture\Handler\FactureCronHandler;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Lock\LockFactory;
 
 #[AsCommand(
     name: 'mercredi:facture-send',
-    description: 'Envoie les factures par mail'
+    description: 'Traite les envois de factures planifiés (FactureCron) et envoie les mails'
 )]
 class SendFactureCommand extends Command
 {
     public function __construct(
-        private FactureRepository $factureRepository,
-        private FactureCronRepository $factureCronRepository,
-        private FactureEmailFactory $factureEmailFactory,
-        private AdminEmailFactory $adminEmailFactory,
-        private NotificationMailer $notificationMailer,
-        ?string $name = null
+        private readonly FactureCronHandler $factureCronHandler,
+        private readonly LockFactory $lockFactory,
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this
-            ->addOption('force', null, InputOption::VALUE_OPTIONAL, 'Envoye facture déjà envoyée', false);
+        $this->addOption('max', null, InputOption::VALUE_REQUIRED, 'Nombre maximum de factures envoyées par exécution', 40);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $force = (bool)$input->getOption('force');
-
         $io = new SymfonyStyle($input, $output);
-        $crons = $this->factureCronRepository->findNotDone();
-        foreach ($crons as $cron) {
-            $i = 0;
-            $factures = $this->factureRepository->findFacturesByMonth($cron->getMonthDate());
-            $count = \count($factures);
-            $io->writeln($count.' factures trouvées');
 
-            $messageBase = $this->factureEmailFactory->messageFacture(
-                $cron->getSubject(),
-                $cron->getBody()
-            );
+        // Une exécution peut durer jusqu'à 60 minutes chez l'hébergeur
+        $lock = $this->lockFactory->createLock('mercredi-facture-send', 3600);
+        if (!$lock->acquire()) {
+            $io->warning('Un envoi de factures est déjà en cours.');
 
-            foreach ($factures as $facture) {
-                if (null !== $facture->getEnvoyeLe() && !$force) {
-                    continue;
-                }
-
-                $messageFacture = clone $messageBase; //sinon attachs multiple
-
-                $tuteur = $facture->getTuteur();
-                $emails = TuteurUtils::getEmailsOfOneTuteur($tuteur);
-
-                if (\count($emails) < 1) {
-                    $error = 'Pas de mail pour la facture: '.$facture->getId();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
-                    continue;
-                }
-
-                $this->factureEmailFactory->setTos($messageFacture, $emails);
-                try {
-                    $this->factureEmailFactory->attachFactureFromPath($messageFacture, $facture);
-                } catch (Exception $e) {
-                    $error = 'Pas de pièce jointe pour la facture: '.$facture->getId();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
-                    continue;
-                }
-
-                try {
-                    $this->notificationMailer->sendMail($messageFacture);
-                } catch (TransportExceptionInterface $e) {
-                    $error = 'Facture num '.$facture->getId().' '.$e->getMessage();
-                    $message = $this->adminEmailFactory->messageAlert('Erreur envoie facture', $error);
-                    $this->notificationMailer->sendAsEmailNotification($message);
-                    continue;
-                }
-
-                $facture->setEnvoyeA(implode(', ', $emails));
-                $facture->setEnvoyeLe(new DateTime());
-                ++$i;
-                $io->writeln($i.'/'.$count);
-                $this->factureRepository->flush();
-            }
-            $cron->setDone(true);
+            return Command::SUCCESS;
         }
 
-        $this->factureRepository->flush();
+        $failed = false;
+        try {
+            $result = $this->factureCronHandler->execute((int) $input->getOption('max'));
+        } catch (\Throwable $exception) {
+            $failed = true;
+            $result = [['error' => $exception->getMessage()]];
+        } finally {
+            $lock->release();
+        }
 
-        return Command::SUCCESS;
+        foreach ($result as $line) {
+            $io->writeln($line['message'] ?? $line['error']);
+        }
+
+        if ([] !== $result) {
+            try {
+                $this->factureCronHandler->sendResult($result);
+            } catch (\Throwable $exception) {
+                $io->error('Rapport non envoyé: '.$exception->getMessage());
+            }
+        }
+
+        return $failed ? Command::FAILURE : Command::SUCCESS;
     }
 }

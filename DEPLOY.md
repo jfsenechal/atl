@@ -91,9 +91,50 @@ in production the files are served from `public/assets/` only.
 APP_ENV=prod bin/console cache:clear
 ```
 
+## 8. Scheduled invoice sending (once)
+
+Invoices planned in the admin (`FactureCron`) are sent by the
+`mercredi:facture-send` command. The public URL `/cron/launch` no longer exists
+(it returns a 404).
+
+OVH shared hosting runs a PHP file without arguments, so the scheduled task
+points to the wrapper script `bin/cron-facture.php`, which runs the command.
+
+In the OVH control panel: Web Cloud → Hosting plans → the hosting → **More** →
+**Scheduled tasks - Cron** → **Add a scheduled task**:
+
+- Command to execute: path of `bin/cron-facture.php` relative to the hosting
+  root (for example `www/bin/cron-facture.php` if the project is in `www/`)
+- Language: the PHP version of the project (8.5)
+- Frequency: every hour, every day
+
+Then delete the old task that calls `https://atl-hotton.be/cron/launch`.
+
+Good to know:
+
+- `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.env.local` on the
+  server, as for the website.
+- Each run sends at most 40 invoices per `FactureCron`, and a `FactureCron` is
+  processed at most once every 60 minutes; it is marked done when no invoice is
+  left to send.
+- Invoices, admin alerts and the run report are sent directly over SMTP, not
+  through the Messenger queue.
+- A lock (`symfony/lock`) makes a run exit immediately if another one is still
+  in progress.
+
+To check mail sending from the command line (over SSH), or to run a batch by hand:
+
+```bash
+APP_ENV=prod bin/console mailer:test you@example.com
+APP_ENV=prod bin/console mercredi:facture-send
+```
+
+The output of each scheduled run is in the OVH cron logs (hosting → **More** →
+**Logs**), and the report is mailed after each run that did something.
+
 ## Routine deployment (after the first one)
 
-Steps 2 and 3 are one-off. Later deployments only need:
+Steps 2, 3 and 8 are one-off. Later deployments only need:
 
 ```bash
 git pull
