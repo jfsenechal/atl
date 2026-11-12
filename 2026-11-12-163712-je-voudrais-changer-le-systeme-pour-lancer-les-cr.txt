@@ -1,0 +1,273 @@
+ ▐▛███▛█   Claude Code v2.1.322
+▝▜██████▀  Fable 5.2 · Claude Pro
+ ▝▝   ▝▝   /var/www/hotton
+
+
+❯ je voudrais changer le systeme pour lancer les crons lors de l'envoie des     
+  factures (FactureCron entity)                                                 
+  pour le moment une tache va voir l'url toutes les heures                      
+  https://atl-hotton.be/cron/launch                                             
+  je ne veux plus faire ainsi, quel solution symfony                            
+  attention hébergement chez ovh mutualisé                                      
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Recommandation : une commande console lancée par les « Tâches planifiées 
+  (CRON) » du manager OVH, via un petit script PHP d'amorçage. C'est ce qui
+  remplace proprement l'appel HTTP sur un mutualisé.
+
+  symfony/scheduler, la solution Symfony « idiomatique », ne convient pas ici :
+  il lui faut un worker permanent (messenger:consume scheduler_default), et le
+  mutualisé OVH n'autorise ni daemon, ni supervisor, ni crontab système.
+
+  Les contraintes du cron OVH, de mémoire (à vérifier dans votre manager) :
+  - Fréquence : une exécution par heure au maximum, ce qui colle avec votre
+    rythme actuel et le garde-fou de 60 minutes dans FactureCronHandler.
+  - Durée : 60 minutes maximum par exécution.
+  - Commande : on désigne un fichier PHP, sans arguments. On ne peut donc pas
+    écrire bin/console mercredi:facture-send directement, d'où le script
+    d'amorçage.
+
+  Ce que je mettrais en place :
+
+  1. Rebrancher mercredi:facture-send sur FactureCronHandler::execute().
+     Aujourd'hui la commande duplique une ancienne version de la logique : pas
+     de génération de PDF, pas de lot de 40, pas de délai de 60 minutes. Le
+     handler est la version à jour.
+  2. Ajouter un script bin/cron-facture.php qui démarre le kernel en prod et
+     exécute la commande. C'est ce fichier qu'on déclare dans le manager OVH,
+     hors de public/, donc inaccessible par le web.
+  3. Supprimer la route /cron/launch dans DefaultController. Elle est publique
+     et sans authentification : n'importe qui peut déclencher l'envoi.
+  4. Ajouter symfony/lock sur la commande, pour éviter deux exécutions
+     simultanées.
+
+  Un point à vérifier en parallèle : SendEmailMessage est routé vers le
+  transport async (Doctrine), donc les mails sont mis en file et non envoyés
+  directement. Je n'ai pas vu ce qui consomme cette file en production (la
+  méthode consume() du contrôleur n'a pas de route). Si rien ne la consomme, il
+  faut une seconde tâche OVH qui lance messenger:consume async 
+  --time-limit=3300, ou repasser les mails de factures en synchrone.
+
+  Voulez-vous que j'implémente les points 1 à 4 ?
+
+✻ Sautéed for 29s · done 14:35
+
+❯ est ce que cette methode envoie les mails en bash, je ne suis pas sur de      
+  pouvoir envoyer des mails en mode console                                     
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Oui : en console, l'envoi passe exactement par le même chemin qu'en web, rien
+  dans le code ne dépend du contexte HTTP. NotificationMailer::sendMail()
+  appelle MailerInterface::send(), qui utilise le MAILER_DSN configuré.
+
+  Deux points décident si ça marche réellement chez OVH :
+
+  - Le transport. Si la production est en SMTP (comme votre .env.local ici :
+    smtp.marche.be:465), PHP ouvre une connexion sortante, que ce soit en web ou
+    en CLI. Comme la route /cron/launch envoie déjà par ce biais depuis le même
+    hébergement, il n'y a pas de raison que ça change. Le seul cas douteux
+    serait sendmail://default ou native://default, qui dépendent de la
+    configuration du PHP CLI ; je n'ai pas accès au MAILER_DSN de production
+    pour le confirmer.
+  - La file Messenger. Dans config/packages/messenger.yaml, SendEmailMessage est
+    routé vers async. send() n'envoie donc pas le mail : il l'écrit dans la
+    table messenger_messages, en web comme en console. Le mail ne part que
+    lorsqu'un messenger:consume async tourne. Je n'ai rien trouvé dans le dépôt
+    qui lance ce worker ; si les factures partent bien aujourd'hui, c'est que
+    quelque chose le fait en production ou que la config y est différente.
+
+  Pour lever le doute, deux commandes à lancer sur l'hébergement OVH (en SSH, ou
+  via une tâche cron temporaire) :
+
+  php bin/console mailer:test votre@adresse.be   # envoi direct, sans passer par
+  Messenger
+  php bin/console messenger:stats                # nombre de messages en attente
+  dans la file
+
+  - Si mailer:test arrive, l'envoi en console fonctionne.
+  - Si messenger:stats montre des messages en attente, la file n'est pas
+    consommée.
+
+  Pour les factures, je conseille de toute façon l'envoi synchrone dans la
+  commande cron : elle tourne déjà en arrière-plan, par lots de 40, et vous
+  marquez envoyeLe juste après l'envoi. Avec la file, une facture est notée «
+  envoyée » alors que le mail peut encore échouer plus tard. Cela se fait en
+  retirant le routage async de SendEmailMessage, ou en injectant le transport
+  directement (TransportInterface) dans le handler.
+
+  Dites-moi ce que donnent les deux commandes et j'adapte l'implémentation en
+  conséquence.
+
+✻ Cogitated for 24s · done 14:38
+
+❯ oui implémente les points 1 à 4 avec envoi synchrone                          
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Le code est en place (commande, script OVH, route supprimée, envoi direct) ;
+  j'écris maintenant le test de la commande et je vérifie le tout.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Les quatre points sont implémentés, avec envoi synchrone. Les tests passent
+  (13, dont 4 nouveaux sur la commande), mais je n'ai pas lancé d'envoi réel :
+  la commande aurait pu envoyer de vraies factures depuis votre base locale.
+
+  Ce qui a changé
+
+  - Commande mercredi:facture-send : elle délègue maintenant à
+    FactureCronHandler::execute() (génération du PDF, lot de 40, délai de 60
+    minutes) et envoie le rapport comme le faisait la route. L'option --force
+    disparaît, remplacée par --max (40 par défaut) ; le forçage reste porté par
+    force_send de l'entité.
+  - Envoi synchrone : dans FactureCronHandler, la facture part directement par
+    le transport SMTP, sans passer par la file Messenger. Elle n'est marquée
+    envoyeLe que si le serveur a accepté le mail.
+  - Script bin/cron-facture.php : c'est le fichier à déclarer dans le manager
+    OVH. Il lit APP_ENV dans le .env.local du serveur.
+  - Route /cron/launch supprimée, ainsi que le template default/cron.html.twig
+    et la méthode consume() du contrôleur, qui n'avait pas de route.
+  - Verrou : symfony/lock est installé via Flex (LOCK_DSN=flock). Si une
+    exécution est déjà en cours, la commande s'arrête sans rien faire.
+
+  À savoir
+
+  - Alertes admin et rapport : ils passent toujours par le Notifier, donc par la
+    file async. Si cette file n'est pas consommée en production, vous ne les
+    recevrez pas. Dites-moi si vous voulez que je les passe aussi en direct.
+  - Bouton admin « lancer » (/admin/facture/send/all/cron/{id}) : je ne l'ai pas
+    touché ni vérifié.
+  - Verrou flock : il est local à une machine. Si OVH lance les crons sur des
+    nœuds différents, il ne protège pas ; le délai de 60 minutes sur
+    dateLastSync reste alors le garde-fou.
+
+  Mise en production
+
+  1. Déployer, avec composer install pour récupérer symfony/lock.
+  2. Dans le manager OVH, sous Hébergement → Tâches planifiées, créer une tâche
+     horaire pointant vers bin/cron-facture.php (chemin relatif à la racine de
+     l'hébergement), avec PHP 8.5.
+  3. Supprimer l'ancienne tâche qui appelle https://atl-hotton.be/cron/launch :
+     elle renverra désormais une 404.
+
+  Rien n'est commité.
+
+✻ Cooked for 1m 42s · done 14:49
+
+❯ passe aussi les alertes admin et le rapport en direct                         
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● C'est fait : les alertes admin et le rapport partent maintenant directement
+  par le transport SMTP, comme les factures. FactureCronHandler n'utilise plus
+  du tout la file Messenger ni le Notifier.
+
+  Le conteneur est valide et les 13 tests passent, mais aucun envoi réel n'a été
+  testé : les tests remplacent le handler par un double.
+
+  - Alertes : si l'envoi d'une alerte échoue, l'erreur est ignorée pour ne pas
+    interrompre le lot ; l'incident reste noté dans le rapport de l'exécution.
+  - Rapport : si son envoi échoue, la commande l'affiche (« Rapport non envoyé :
+    … »), donc ça apparaîtra dans les logs du cron OVH.
+  - Destinataires : inchangés, l'adresse de contact de l'organisation pour les
+    alertes et jf@marche.be pour le rapport.
+
+  Le changement est dans
+  src/AcMarche/Mercredi/src/Facture/Handler/FactureCronHandler.php. Rien n'est
+  commité.
+
+✻ Brewed for 22s · done 14:57
+
+❯ indique la manipulation dans DEPLOY.md                                        
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(DEPLOY.md)
+  ⎿  Added 42 lines, removed 1 line
+       91  APP_ENV=prod bin/console cache:clear
+       92  ```
+       93  
+       94 +## 8. Scheduled invoice sending (once)                        
+       95 +                                                              
+       96 +Invoices planned in the admin (`FactureCron`) are sent by the 
+       97 +`mercredi:facture-send` command. The public URL `/cron/launch`
+          + no longer exists                                             
+       98 +(it returns a 404).                                           
+       99 +                                                              
+      100 +OVH shared hosting runs a PHP file without arguments, so the s
+          +cheduled task                                                 
+      101 +points to the wrapper script `bin/cron-facture.php`, which run
+          +s the command.                                                
+      102 +                                                              
+      103 +In the OVH control panel: Web Cloud → Hosting plans → the host
+          +ing → **More** →                                              
+      104 +**Scheduled tasks - Cron** → **Add a scheduled task**:        
+      105 +                                                              
+      106 +- Command to execute: path of `bin/cron-facture.php` relative 
+          +to the hosting                                                
+      107 +  root (for example `www/bin/cron-facture.php` if the project 
+          +is in `www/`)                                                 
+      108 +- Language: the PHP version of the project (8.5)              
+      109 +- Frequency: every hour, every day                            
+      110 +                                                              
+      111 +Then delete the old task that calls `https://atl-hotton.be/cro
+          +n/launch`.                                                    
+      112 +                                                              
+      113 +Good to know:                                                 
+      114 +                                                              
+      115 +- `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.
+          +env.local` on the                                             
+      116 +  server, as for the website.                                 
+      117 +- Each run sends at most 40 invoices per `FactureCron`, and a 
+          +`FactureCron` is                                              
+      118 +  processed at most once every 60 minutes; it is marked done w
+          +hen no invoice is                                             
+      119 +  left to send.                                               
+      120 +- Invoices, admin alerts and the run report are sent directly 
+          +over SMTP, not                                                
+      121 +  through the Messenger queue.                                
+      122 +- A lock (`symfony/lock`) makes a run exit immediately if anot
+          +her one is still                                              
+      123 +  in progress.                                                
+      124 +                                                              
+      125 +To check mail sending from the command line (over SSH), or to 
+          +run a batch by hand:                                          
+      126 +                                                              
+      127 +```bash                                                       
+      128 +APP_ENV=prod bin/console mailer:test you@example.com          
+      129 +APP_ENV=prod bin/console mercredi:facture-send                
+      130 +```                                                           
+      131 +                                                              
+      132 +The output of each scheduled run is in the OVH cron logs (host
+          +ing → **More** →                                              
+      133 +**Logs**), and the report is mailed after each run that did so
+          +mething.                                                      
+      134 +                                                              
+      135  ## Routine deployment (after the first one)
+      136  
+       96 -Steps 2 and 3 are one-off. Later deployments only need:       
+      137 +Steps 2, 3 and 8 are one-off. Later deployments only need:    
+      138  
+      139  ```bash
+      140  git pull
+
+● J'ai ajouté une section « 8. Scheduled invoice sending (once) » dans
+  DEPLOY.md, en anglais comme le reste du fichier, juste avant « Routine
+  deployment ».
+
+  Elle décrit :
+  - la création de la tâche planifiée OVH pointant vers bin/cron-facture.php
+    (PHP 8.5, toutes les heures) ;
+  - la suppression de l'ancienne tâche qui appelle /cron/launch ;
+  - le fonctionnement (lots de 40, délai de 60 minutes, envoi SMTP direct,
+    verrou) ;
+  - les commandes pour tester l'envoi de mail et lancer un lot à la main.
+
+  Deux éléments sont écrits de mémoire et à ajuster si votre manager OVH diffère
+  : le chemin des menus (« More → Scheduled tasks - Cron », « More → Logs ») et
+  l'exemple de chemin www/bin/cron-facture.php, qui dépend de l'endroit où le
+  projet est installé sur l'hébergement.
+
+✻ Brewed for 13s · done 15:17
