@@ -1,0 +1,51 @@
+<h4 class="text-success">Détails calculs</h4>
+<table class="table table-bordered table-hover">
+    <thead>
+    </thead>
+    <tr>
+        <td>Total présences</td>
+        <td>{{ dto.totalPresences|format_currency('euro') }}</td>
+    </tr>
+    {% if factureAccueils|length > 0 %}
+        <tr>
+            <td>Total accueils</td>
+            <td>{{ dto.totalAccueils|format_currency('euro') }}</td>
+        </tr>
+    {% endif %}
+    <tr>
+        <td>Total des réductions (montants fixes)</td>
+        <td>{{ dto.totalReductionAmounts|format_currency('euro') }}</td>
+    </tr>
+    <tr>
+        <td>Total des compléments (montants fixes)</td>
+        <td>{{ dto.totalComplementAmounts|format_currency('euro') }}</td>
+    </tr>
+    <tr>
+        <td><strong>Total intermédiaire avant l'application des pourcentages en plus ou en moins</strong></td>
+        <td>{{ dto.totalHorsPourcentage|format_currency('euro') }}</td>
+    </tr>
+    <tr>
+        <td>Réduction en pourcentage à appliquer</td>
+        <td>
+            {{ dto.totalReductionPourcentage }} %
+            sur {{ dto.totalHorsPourcentage|format_currency('euro') }}
+            = {{ dto.pourcentageEnMoins|format_currency('euro') }}
+        </td>
+    </tr>
+    <tr>
+        <td>Compléments en pourcentage à appliquer
+        </td>
+        <td>
+            {{ dto.totalComplementPourcentage }} %
+            sur {{ dto.totalHorsPourcentage|format_currency('euro') }}
+            = {{ dto.pourcentageEnPlus|format_currency('euro') }}</td>
+    </tr>
+    <tr>
+        <td><strong>Total de la facture</strong></td>
+        <td><strong>{{ dto.total|format_currency('eur') }}</strong></td>
+    </tr>
+    <tr>
+        <td><strong>Restant a payer</strong></td>
+        <td><strong>{{ dto.totalDu|format_currency('eur') }}</strong></td>
+    </tr>
+</table>

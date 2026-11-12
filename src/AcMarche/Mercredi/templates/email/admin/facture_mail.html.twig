@@ -1,0 +1,10 @@
+{% extends '@AcMarcheMercredi/email/body.html.twig' %}
+{% block subject %}
+    {{ email.subject }}
+{% endblock %}
+
+{% block content %}
+
+    {{ texte|nl2br }}
+
+{% endblock %}

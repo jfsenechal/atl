@@ -1,0 +1,24 @@
+{% extends '@AcMarcheMercredi/email/body.html.twig' %}
+{% block subject %}
+    <p class="lead">
+        {{ email.subject }}
+    </p>
+{% endblock %}
+
+{% block content %}
+    Cher(s) parent(s),
+    <br>
+    <br>
+    Votre compte a bien été créé sur le site internet.
+    <br>
+    <br>
+    <strong>Un administrateur va valider votre compte.</strong>
+    <br>
+    <strong>Vous recevrez un autre mail indiquant la procédure à suivre</strong>
+    <br>
+    <br>
+    Bien à vous,
+    <br>
+    <br>
+
+{% endblock %}

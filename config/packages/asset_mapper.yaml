@@ -1,0 +1,18 @@
+framework:
+    asset_mapper:
+        # The paths to make available to the asset mapper.
+        paths:
+            assets/: ''
+            # Mercredi bundle styles, images and Stimulus controllers
+            src/AcMarche/Mercredi/assets/: mercredi
+        # Encore-era entrypoints of the bundle, not usable with AssetMapper
+        excluded_patterns:
+            - '*/Mercredi/assets/app.js'
+            - '*/Mercredi/assets/bootstrap.js'
+            - '*/Mercredi/assets/controllers.json'
+        missing_import_mode: strict
+
+when@prod:
+    framework:
+        asset_mapper:
+            missing_import_mode: warn

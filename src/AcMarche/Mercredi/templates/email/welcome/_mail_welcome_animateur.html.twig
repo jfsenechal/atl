@@ -1,0 +1,41 @@
+{% extends '@AcMarcheMercredi/email/body.html.twig' %}
+{% block subject %}
+    <p class="lead">
+        {{ email.subject }}
+    </p>
+{% endblock %}
+
+{% block content %}
+
+    Cher animateur, chère animatrice,
+    <br><br>
+    Un compte vient d'être ouvert à votre nom sur le site internet {{ absolute_url(path('mercredi_front_home')) }}
+    <br><br>
+
+    <div class="alert alert-info">
+        <a href="{{ tokenUrl }}">
+            Utilisez ce lien pour vous connecter.
+        </a>
+    </div>
+
+    <br/><br/>
+    Vous pouvez aussi vous connecter sur le site avec vos identifiants :
+    <br><br>
+    Nom d'utilisateur: {{ user.email }}
+    {% if password %}<br>
+        Votre mot de passe: {{ password }}
+    {% else %}
+        Le mot de passe que vous avez choisi lors de votre inscription
+    {% endif %}
+    <br><br>
+    Vous pouvez désormais avoir un accès aux listings de présences, aux fiches de santé des enfants et aux coordonnées des parents.
+    <br><br>
+    Attention, toutes ces informations sont confidentielles.
+    <br><br>
+    Il est strictement interdit de transmettre votre identifiant et votre mot de passe à autrui.
+    <br><br>
+    Nous restons à votre disposition pour toutes questions.
+    <br><br>
+
+{% endblock %}
+

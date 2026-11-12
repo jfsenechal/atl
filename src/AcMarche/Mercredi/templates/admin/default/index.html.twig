@@ -1,0 +1,28 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body -%}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>Accès rapide</h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">Écrivez le nom de l'enfant pour un accès rapide</div>
+
+            {{ form_start(form) }}
+            {{ form_errors(form) }}
+            {{ form_row(form.nom) }}
+            <button type="submit" name="submit" class="btn btn-primary">
+                <i class="fas fa-plane"></i> Go
+            </button>
+            {{ form_end(form) }}
+
+        </div>
+        <div class="card-footer">
+            <a href="{{ path('mercredi_front_home') }}">
+                <i class="fas fa-arrow-left"></i>
+                Retour au site public
+            </a>
+        </div>
+    </div>
+{% endblock %}

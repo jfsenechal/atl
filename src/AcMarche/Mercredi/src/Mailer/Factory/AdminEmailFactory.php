@@ -1,0 +1,104 @@
+<?php
+
+namespace AcMarche\Mercredi\Mailer\Factory;
+
+use AcMarche\Mercredi\Entity\Enfant;
+use AcMarche\Mercredi\Entity\Security\User;
+use AcMarche\Mercredi\Entity\Tuteur;
+use AcMarche\Mercredi\Mailer\TemplatedEmailFactory;
+use AcMarche\Mercredi\Organisation\Traits\OrganisationPropertyInitTrait;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+use Symfony\Component\Security\Core\User\UserInterface;
+
+class AdminEmailFactory
+{
+    use OrganisationPropertyInitTrait;
+
+    public function messageEnfantCreated(User|UserInterface $user, Enfant $enfant): TemplatedEmail
+    {
+        $message = TemplatedEmailFactory::asPublicEmailJf();
+        $message
+            ->from($this->getEmailSenderAddress())
+            ->to($this->getEmailContact())
+            ->subject('Un enfant a été ajouté par '.$user->getNom().' '.$user->getPrenom())
+            ->textTemplate('@AcMarcheMercrediEmail/admin/_mail_add_enfant.html.twig')
+            ->context(
+                [
+                    'user' => $user,
+                    'enfant' => $enfant,
+                    'footer_text' => 'orga',
+                    'organisation' => $this->organisation,
+                ]
+            );
+
+        return $message;
+    }
+
+    /**
+     * @param Enfant[] $enfants
+     */
+    public function messagEnfantsOrphelins(array $enfants): TemplatedEmail
+    {
+        $message = TemplatedEmailFactory::asPublicEmailJf();
+        $message
+            ->from($this->getEmailSenderAddress())
+            ->to($this->getEmailContact())
+            ->subject('Des enfants orphelins ont été trouvés')
+            ->textTemplate('@AcMarcheMercrediEmail/admin/_mail_orphelins.html.twig')
+            ->context(
+                [
+                    'enfants' => $enfants,
+                    'footer_text' => 'orga',
+                    'organisation' => $this->organisation,
+                ]
+            );
+
+        return $message;
+    }
+
+    /**
+     * @param array|Tuteur[] $tuteurs
+     */
+    public function messageTuteurArchived(array $tuteurs): TemplatedEmail
+    {
+        $message = TemplatedEmailFactory::asPublicEmailJf();
+        $message
+            ->from($this->getEmailSenderAddress())
+            ->to($this->getEmailContact())
+            ->subject('Les tuteurs ont été archivés')
+            ->textTemplate('@AcMarcheMercrediEmail/admin/_mail_tuteurs_archived.html.twig')
+            ->context(
+                [
+                    'tuteurs' => $tuteurs,
+                    'footer_text' => 'orga',
+                    'organisation' => $this->organisation,
+                ]
+            );
+
+        return $message;
+    }
+
+    public function messageAlert(string $subject, string $texte): TemplatedEmail
+    {
+        $message = TemplatedEmailFactory::asPublicEmailJf();
+        $message
+            ->from($this->getEmailSenderAddress())
+            ->to($this->getEmailContact())
+            ->subject($subject)
+            ->text($texte);
+
+        return $message;
+    }
+
+    public function messageToJf(string $subject, string $texte): TemplatedEmail
+    {
+        $message = TemplatedEmailFactory::asPublicEmailJf();
+        $message
+            ->from($this->getEmailSenderAddress())
+            ->to('jf@marche.be')
+            ->subject($subject)
+            ->text($texte);
+
+        return $message;
+    }
+}

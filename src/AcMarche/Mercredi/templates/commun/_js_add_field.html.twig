@@ -1,0 +1,48 @@
+<template id="remove-collection-widget-template">
+    {{ include('@AcMarcheMercredi/commun/_btn_remove_field.html.twig') }}
+</template>
+<script type="text/javascript">
+    document.addEventListener("turbo:load", () => {
+        const btn = document.querySelector('#add-another-accompagnateur');
+        if (!btn) {
+            return;
+        }
+        // Delegated, so it also covers the rows added afterwards
+        document.querySelector(btn.getAttribute('data-list-selector')).addEventListener('click', (event) => {
+            const removeBtn = event.target.closest('.remove-collection-widget');
+            if (removeBtn) {
+                removeBtn.closest('li').remove();
+            }
+        });
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-list-selector');//#email-fields-list
+            const list = document.querySelector(id);
+            // Try to find the counter of the list or use the length of the list
+            let counter = list.dataset.widgetCounter || list.children.length;
+            // grab the prototype template
+            let newWidget = list.getAttribute('data-prototype');
+            // replace the "__name__" used in the id and name of the prototype
+            // with a number that's unique to your emails
+            // end name attribute looks like name="contact[emails][2]"
+            newWidget = newWidget.replace(/__name__/g, counter);
+            // Increase the counter
+            counter++;
+            // And store it, the length cannot be used if deleting widgets is allowed
+            list.dataset.widgetCounter = counter;
+            // create a new list element and add it to the list
+            const liElement = createElementFromHTML(list.dataset.widgettags);//<li></li>
+            const row = document.createElement('div');
+            row.className = 'd-flex gap-2';
+            row.insertAdjacentHTML('beforeend', newWidget);//=>input
+            row.appendChild(document.querySelector('#remove-collection-widget-template').content.cloneNode(true));
+            liElement.appendChild(row);
+            list.appendChild(liElement);//ajoute le li
+        });
+    });
+
+    function createElementFromHTML(htmlString) {
+        const div = document.createElement('div');
+        div.innerHTML = htmlString.trim();
+        return div.firstElementChild;
+    }
+</script>

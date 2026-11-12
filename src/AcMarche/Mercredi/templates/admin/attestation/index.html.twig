@@ -1,0 +1,49 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body %}
+    <div class="card">
+        <div class="card-header">
+            <h3>Attestations Spf</h3>
+        </div>
+        <div class="card-body">
+            <ul class="list-group">
+                {% for year in years %}
+                    <li class="list-group-item">
+                        <a href="{{ path('mercredi_admin_attestation_spf', {'year': year}) }}">
+                            Année {{ year }} Xls</a> |
+                        <a href="{{ path('mercredi_admin_attestation_missing_rrn', {'year': year}) }}">
+                            Parcourir les numéros nationaux manquant</a>
+                    </li>
+                {% endfor %}
+            </ul>
+            <br/><br/>
+            <div class="alert alert-info">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item">Télécharger le fichier xls ci-dessus</li>
+                    <li class="list-group-item">Convertir le xls en Xml avec l'outil Bowconvert</li>
+                    <li class="list-group-item">Convertir le xml en Bow avec l'outil Belcotax</li>
+                    <li class="list-group-item">Le fichier BOW est créé. C’est ce fichier qu’il faudra envoyer via
+                        Belcotax-On-Web
+                    </li>
+                </ol>
+            </div>
+            <br/><br/>
+            Numéro d'entreprise (BCE) : 0207347891 (Pour Marche-en-Famenne)
+            <br/><br/>
+            <a href="https://finances.belgium.be/sites/default/files/downloads/161-bowconvert86-2022.zip">
+                Téléchargez l’outil Bowconvert
+            </a> <br/><br/>
+            <a href="https://ccff02.minfin.fgov.be/CCFF_SP7_2022/jnlp/belcotax.jnlp">
+                Téléchargez l’outil Belcotax
+            </a>
+            <br/><br/>
+            <a href="https://mcusercontent.com/6ee8fd8d279afe53981b72411/files/91e02970-1856-633a-3525-429b8b22daa2/NL_04_frais_de_garde_tuto_version_def.pdf">
+                Manuel et explication (pdf)
+            </a>
+            <br/><br/>
+            <a href="https://finances.belgium.be/fr/E-services/Belcotaxonweb/documentation-technique">
+                Données techniques sur le site des finances
+            </a>
+        </div>
+    </div>
+{% endblock %}

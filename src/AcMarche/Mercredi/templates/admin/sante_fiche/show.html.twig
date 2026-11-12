@@ -1,0 +1,21 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body %}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>Fiche santé de {{ enfant }}</h3>
+        </div>
+        <div class="card-body">
+
+            {% include '@AcMarcheMercrediAdmin/sante_fiche/_actions.html.twig' %}
+
+            <br/>
+
+            {% include '@AcMarcheMercredi/sante/_detail.html.twig' %}
+        </div>
+    </div>
+
+    {% include '@AcMarcheMercrediAdmin/sante_fiche/_delete_form.html.twig' %}
+
+{% endblock %}

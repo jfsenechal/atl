@@ -1,0 +1,28 @@
+{% extends '@AcMarcheMercredi/email/body.html.twig' %}
+{% block subject %}
+    <p class="lead">
+        {{ email.subject }}
+    </p>
+{% endblock %}
+
+{% block content %}
+
+    Bonjour {{ user.prenom }} {{ user.nom }}
+    <br/>
+    <br/>
+
+    Vous avez fait une demande de pour vous connecter sur le site.
+    <br/>
+    <br/>
+    Si ce n'est pas vous, vous pouvez ignorer ce mail.
+    <br/>
+    <br/>
+    <div class="alert alert-info">
+        <a href="{{ tokenUrl }}">
+            Utilisez ce lien pour vous connecter
+        </a>
+    </div>
+
+    <br/>
+
+{% endblock %}

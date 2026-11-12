@@ -1,0 +1,59 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body %}
+
+    <div class="card mb-3">
+
+        <div class="card-header">
+            <h3>{{ tuteur }}</h3>
+            <div class="float-end">
+                {% include '@AcMarcheMercredi/commun/_sexe.html.twig' with {'entity':tuteur} %}
+                {% include '@AcMarcheMercredi/commun/_archive.html.twig' with {'entity':tuteur} %}
+            </div>
+            <i class="fas fa-map-marked-alt"></i>
+            {{ tuteur.rue }} <br/>
+            {{ tuteur.codepostal }} {{ tuteur.localite }}
+        </div>
+
+        <div class="card-body">
+
+            {% include '@AcMarcheMercrediAdmin/tuteur/_actions.html.twig' %}
+
+            <div class="row">
+                <div class="col-6">
+                    {% include '@AcMarcheMercrediAdmin/tuteur/_identite.html.twig' %}
+                </div>
+                <div class="col-6">
+                    {% include '@AcMarcheMercrediAdmin/tuteur/_conjoint.html.twig' %}
+                </div>
+            </div>
+
+            {% if tuteur.remarque %}
+                <p class="text-muted">
+                    {{ tuteur.remarque | nl2br }}
+                </p>
+            {% endif %}
+
+            <br/>
+            {% include '@AcMarcheMercrediAdmin/tuteur/_enfants.html.twig' %}
+            {% include '@AcMarcheMercrediAdmin/relation/_unlink_modal.html.twig' %}
+
+        </div>
+        <div class="card-footer text-muted mt-3">
+            Crée le {{ tuteur.createdAt | format_date('full') }} par {{ tuteur.userAdd }}. Mis à jour
+            le {{ tuteur.updatedAt | format_date('full') }}
+        </div>
+    </div>
+
+    {% include '@AcMarcheMercrediAdmin/tuteur/_delete_form.html.twig' %}
+    {% include '@AcMarcheMercrediAdmin/tuteur/_add_enfant_modal.html.twig' %}
+    <script type="text/javascript">
+        let elements = document.querySelectorAll(".unlinktuteur");
+        Array.prototype.forEach.call(elements, function (element, i) {
+            element.addEventListener('click', () => {
+                document.querySelector("#relationid").value = element.dataset.id;
+                document.querySelector("#relationtoken").value = element.dataset.token;
+            });
+        });
+    </script>
+{% endblock %}

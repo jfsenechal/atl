@@ -1,0 +1,31 @@
+{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}
+
+{% block body %}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3>Associer un parent au compte <i>{{ user }}</i></h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                Associez un parent existant
+            </div>
+            {{ form_start(form) }}
+            {{ form_errors(form) }}
+            {{ form_widget(form) }}
+            <button class="btn btn-primary mr-1 mb-2" type="submit"><i class="far fa-save" aria-hidden="true"></i>
+                Sauvegarder
+            </button>
+            {{ form_end(form) }}
+
+            <div class="alert alert-info mt-3">
+                Vous ne trouvez pas la fiche parent dans la liste ? <a
+                        href="{{ path('mercredi_admin_tuteur_new_from_user', {'id':user.id}) }}">
+                    Créé une nouvelle fiche parent
+                </a>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
