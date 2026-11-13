@@ -1,6 +1,10 @@
-{% extends '@AcMarcheMercredi/front/layout.html.twig' %}
+{# Extends the base layout without the front layout: the front menu, title and footer
+   are sub-requests that hit the database, which may be the cause of the error. #}
+{% extends '@AcMarcheMercredi/base.html.twig' %}
 
 {% block title %}Erreur serveur - Mercredi{% endblock %}
+
+{% block footer %}{% endblock %}
 
 {% block body -%}
 
@@ -61,24 +65,6 @@
                                 </li>
                             </ul>
                         </div>
-
-                        <!-- Error Details Alert (if in debug mode) -->
-                        {% if status_code is defined and status_text is defined %}
-                            <div class="alert alert-danger d-flex align-items-start" role="alert"
-                                 style="max-width: 500px; margin: 0 auto 2rem;">
-                                <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
-                                <div class="text-start">
-                                    <strong>Détails techniques :</strong>
-                                    <div class="mt-2 small font-monospace">
-                                        <div><strong>Code :</strong> {{ status_code }}</div>
-                                        <div><strong>Statut :</strong> {{ status_text }}</div>
-                                        {% if exception is defined and exception.message is defined %}
-                                            <div class="mt-2"><strong>Message :</strong> {{ exception.message }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
 
                         <!-- Action Buttons -->
                         <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-4">
