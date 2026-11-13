@@ -187,10 +187,10 @@ final class MigrateArrayToJsonCommand extends Command
             return true;
         }
 
-        return (bool) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS
-             WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CHECK_CLAUSE LIKE ?',
-            [$table, '%json_valid(`'.$column.'`)%'],
-        );
+        // information_schema.CHECK_CONSTRAINTS n'a de colonne TABLE_NAME que sous MariaDB
+        // (absente sous MySQL) : SHOW CREATE TABLE fonctionne partout.
+        $createTable = (string) $this->connection->fetchNumeric(\sprintf('SHOW CREATE TABLE `%s`', $table))[1];
+
+        return str_contains(strtolower($createTable), 'json_valid(`'.strtolower($column).'`)');
     }
 }
