@@ -8,6 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
@@ -23,6 +24,7 @@ use Symfony\Component\Messenger\Transport\Sender\SendersLocatorInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface as MessengerTransportInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -46,6 +48,8 @@ final class MailDebugger
         #[Autowire(service: 'messenger.transport.failed')]
         private readonly MessengerTransportInterface $failedTransport,
         private readonly KernelInterface $kernel,
+        #[Target('mailer')]
+        private readonly RateLimiterFactoryInterface $mailerLimiter,
     ) {
     }
 
@@ -101,6 +105,21 @@ final class MailDebugger
     }
 
     /**
+     * Mails still allowed in the current hour (shared by the worker and the invoice cron).
+     *
+     * @return array{remaining: int, limit: int}
+     */
+    public function hourlyQuota(): array
+    {
+        $rateLimit = $this->mailerLimiter->create()->consume(0);
+
+        return [
+            'remaining' => $rateLimit->getRemainingTokens(),
+            'limit' => $rateLimit->getLimit(),
+        ];
+    }
+
+    /**
      * @return array{count: ?int, messages: list<array<string, mixed>>, error: ?string}
      */
     public function queue(string $name, int $limit = 30): array
@@ -131,6 +150,10 @@ final class MailDebugger
      */
     public function sendDirect(Email $email): array
     {
+        if (!$this->mailerLimiter->create()->consume()->isAccepted()) {
+            return ['success' => false, 'error' => 'Limite horaire d\'envoi de mails atteinte.', 'debug' => ''];
+        }
+
         try {
             $sent = $this->mailerTransport->send($email);
 
@@ -165,10 +188,16 @@ final class MailDebugger
     }
 
     /**
-     * Processes the mails waiting in the async queue, as messenger:consume would.
+     * Processes the mails waiting in the async queue, as messenger:consume would. Never more
+     * than the hourly quota left: the worker would otherwise wait for the next hour.
      */
     public function consumeQueue(int $limit = 20, int $timeLimit = 50): string
     {
+        $limit = min($limit, $this->hourlyQuota()['remaining']);
+        if ($limit < 1) {
+            return 'Limite horaire d\'envoi de mails atteinte, rien n\'a été traité.';
+        }
+
         $application = new Application($this->kernel);
         $application->setAutoExit(false);
 

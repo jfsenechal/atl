@@ -76,6 +76,7 @@ final class MailDebugController extends AbstractController
             'sender' => $this->mailDebugger->senderAddress(),
             'contact' => $this->mailDebugger->contactAddress(),
             'routing' => $this->mailDebugger->mailRouting(),
+            'quota' => $this->mailDebugger->hourlyQuota(),
             'asyncQueue' => $this->mailDebugger->queue('async'),
             'failedQueue' => $this->mailDebugger->queue('failed'),
         ];

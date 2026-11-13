@@ -118,7 +118,8 @@ Good to know:
   processed at most once every 60 minutes; it is marked done when no invoice is
   left to send.
 - Invoices, admin alerts and the run report are sent directly over SMTP, not
-  through the Messenger queue.
+  through the Messenger queue. Invoices count against the hourly mail quota
+  (see section 9).
 - A lock (`symfony/lock`) makes a run exit immediately if another one is still
   in progress.
 
@@ -131,6 +132,33 @@ APP_ENV=prod bin/console mercredi:facture-send
 
 The output of each scheduled run is in the OVH cron logs (hosting → **More** →
 **Logs**), and the report is mailed after each run that did something.
+
+## 9. Mail queue worker (once)
+
+Mails sent by the application (an invoice sent from the admin, account mails,
+notifications...) are put in the Messenger `async` queue (database table
+`messenger_messages`). They only leave when the queue is processed, so a
+scheduled task must run the worker.
+
+In the OVH control panel, add a second scheduled task, like the invoice one:
+
+- Command to execute: path of `bin/cron-messenger.php` relative to the hosting
+  root (for example `www/bin/cron-messenger.php`)
+- Language: the PHP version of the project (8.5)
+- Frequency: every hour, every day
+
+The script runs `messenger:consume async` for 55 minutes, so mails leave within
+seconds while it runs.
+
+OVH shared hosting accepts a limited number of mails per hour. The `mailer` rate
+limiter caps sending at `MAILER_HOURLY_LIMIT` mails per hour (100 by default, set
+it in `.env.local`). The worker and the invoice cron share this quota: when it is
+used up, the worker waits and the invoice cron stops and continues on its next
+run.
+
+The page **Paramètres → Diagnostic des mails** (`/admin/mail-debug/`) shows the
+mails waiting or failed, the quota left this hour, sends a test mail with the
+SMTP conversation, and can process the queue by hand.
 
 ## Routine deployment (after the first one)
 

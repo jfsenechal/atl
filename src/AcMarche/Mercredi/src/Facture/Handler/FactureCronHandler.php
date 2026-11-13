@@ -9,8 +9,10 @@ use AcMarche\Mercredi\Mailer\Factory\AdminEmailFactory;
 use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
 use AcMarche\Mercredi\Tuteur\Utils\TuteurUtils;
 use Carbon\Carbon;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Transport\TransportInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 class FactureCronHandler
 {
@@ -21,6 +23,8 @@ class FactureCronHandler
         private FactureFactory $factureFactory,
         private AdminEmailFactory $adminEmailFactory,
         private TransportInterface $transport,
+        #[Target('mailer')]
+        private RateLimiterFactoryInterface $mailerLimiter,
     ) {
     }
 
@@ -91,6 +95,14 @@ class FactureCronHandler
                     $this->sendAlert('Erreur envoie facture', $error);
                     $result[] = ['message' => $facture->getId().' error attach '.$error];
                     continue;
+                }
+
+                // Same hourly quota as the Messenger worker: the rest goes on the next run
+                if (!$this->mailerLimiter->create()->consume()->isAccepted()) {
+                    $result[] = ['message' => 'count '.$i];
+                    $result[] = ['message' => 'Limite horaire d\'envoi de mails atteinte, suite au prochain passage'];
+
+                    return $result;
                 }
 
                 try {

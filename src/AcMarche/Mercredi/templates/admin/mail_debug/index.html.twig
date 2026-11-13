@@ -63,6 +63,13 @@
                     <td>{{ contact }}</td>
                 </tr>
                 <tr>
+                    <th>Mails restants cette heure</th>
+                    <td>
+                        <span class="badge bg-{{ quota.remaining > 0 ? 'success' : 'danger' }}">{{ quota.remaining }} / {{ quota.limit }}</span>
+                        <br><small class="text-muted">Partagé par la file de mails et l'envoi planifié des factures (MAILER_HOURLY_LIMIT).</small>
+                    </td>
+                </tr>
+                <tr>
                     <th>Envoi par l'application</th>
                     <td>
                         {% if routing is empty %}

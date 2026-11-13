@@ -9,6 +9,8 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
+                # Stay under the hosting's hourly mail limit (see rate_limiter.php)
+                rate_limiter: mailer
             failed: 'doctrine://default?queue_name=failed'
             # sync: 'sync://'
 
