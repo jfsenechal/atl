@@ -21,3 +21,21 @@ function loadCkeditor() {
 
 loadCkeditor();
 document.addEventListener('turbo:load', loadCkeditor);
+
+// Turbo renders a 5xx response with its own error renderer, which swaps the <head> and
+// loses the styles loaded by the importmap. Show the error page in the current document instead.
+document.addEventListener('turbo:before-fetch-response', async (event) => {
+    const response = event.detail.fetchResponse;
+    if (!response.serverError) {
+        return;
+    }
+    event.preventDefault();
+    const html = await response.responseHTML;
+    if (!html) {
+        return;
+    }
+    const page = new DOMParser().parseFromString(html, 'text/html');
+    document.title = page.title;
+    document.body.replaceWith(document.adoptNode(page.body));
+    window.scrollTo(0, 0);
+});

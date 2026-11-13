@@ -14,6 +14,7 @@ use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
 use AcMarche\Mercredi\Mailer\NotificationMailer;
 use AcMarche\Mercredi\Parameter\Option;
 use DateTime;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +31,7 @@ final class FactureSendController extends AbstractController
         private FacturePdfFactoryTrait $facturePdfFactory,
         private FactureEmailFactory $factureEmailFactory,
         private NotificationMailer $notificationMailer,
+        private LoggerInterface $logger,
     ) {}
 
     #[Route(path: '/select/month', name: 'mercredi_admin_facture_send_select_month', methods: ['GET', 'POST'])]
@@ -72,15 +74,20 @@ final class FactureSendController extends AbstractController
 
             $message = $this->factureEmailFactory->messageFacture($data['sujet'], $data['texte']);
             $this->factureEmailFactory->setTos($message, [$data['to']]);
-            $this->factureEmailFactory->attachFactureOnTheFly($facture, $message);
 
             try {
+                $this->factureEmailFactory->attachFactureOnTheFly($facture, $message);
                 $this->notificationMailer->sendAsEmailNotification($message);
                 $facture->setEnvoyeA($data['to']);
                 $facture->setEnvoyeLe(new DateTime());
                 $this->addFlash('success', 'La facture a bien été envoyée');
                 $this->factureRepository->flush();
             } catch (\Exception $exception) {
+                $this->logger->error('Envoi de la facture {id} impossible: {message}', [
+                    'id' => $facture->getId(),
+                    'message' => $exception->getMessage(),
+                    'exception' => $exception,
+                ]);
                 $this->addFlash('danger', 'Erreur d\'envoie '.$exception->getMessage());
             }
 

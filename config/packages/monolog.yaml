@@ -54,11 +54,12 @@ when@prod:
                 level: debug
                 formatter: monolog.formatter.html
                 content_type: text/html
+            # Shared hosting (OVH): stderr ends up in the Apache logs, so write to var/log
             nested:
-                type: stream
-                path: php://stderr
+                type: rotating_file
+                path: "%kernel.logs_dir%/%kernel.environment%.log"
+                max_files: 30
                 level: debug
-                formatter: monolog.formatter.json
             console:
                 type: console
                 process_psr_3_messages: false
