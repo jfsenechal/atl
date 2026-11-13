@@ -2,8 +2,14 @@ framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
 
+when@prod:
+    framework:
+        mailer:
+            envelope:
+                recipients: [ 'webmaster@marche.be' ]
+
 when@dev:
     framework:
         mailer:
             envelope:
-                recipients: ['webmaster@marche.be']
+                recipients: [ 'webmaster@marche.be' ]
