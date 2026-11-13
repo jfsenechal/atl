@@ -12,7 +12,7 @@ use Symfony\Component\Mime\Address;
  * those addresses instead of the real recipients. The To/Cc headers are left as-is,
  * so the tester sees who would have received it. Empty = normal sending.
  */
-#[AsEventListener]
+//#[AsEventListener]
 final readonly class SetToListener
 {
     public function __construct(
