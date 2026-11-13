@@ -22,6 +22,7 @@
         "phpoffice/phpspreadsheet": "^5.11",
         "phpstan/phpdoc-parser": "^2.4",
         "setbased/rijksregisternummer": "^1.6",
+        "symfony/apache-pack": "*",
         "symfony/asset": "8.1.*",
         "symfony/asset-mapper": "8.1.*",
         "symfony/console": "8.1.*",
