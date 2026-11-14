@@ -11,13 +11,15 @@ use AcMarche\Mercredi\Facture\Form\FactureSendType;
 use AcMarche\Mercredi\Facture\Repository\FactureCronRepository;
 use AcMarche\Mercredi\Facture\Repository\FactureRepository;
 use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
-use AcMarche\Mercredi\Mailer\NotificationMailer;
 use AcMarche\Mercredi\Parameter\Option;
 use DateTime;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Transport\TransportInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -30,7 +32,9 @@ final class FactureSendController extends AbstractController
         private FactureCronRepository $factureCronRepository,
         private FacturePdfFactoryTrait $facturePdfFactory,
         private FactureEmailFactory $factureEmailFactory,
-        private NotificationMailer $notificationMailer,
+        private TransportInterface $mailerTransport,
+        #[Target('mailer')]
+        private RateLimiterFactoryInterface $mailerLimiter,
         private LoggerInterface $logger,
     ) {}
 
@@ -77,7 +81,12 @@ final class FactureSendController extends AbstractController
 
             try {
                 $this->factureEmailFactory->attachFactureOnTheFly($facture, $message);
-                $this->notificationMailer->sendAsEmailNotification($message);
+                // Sent straight over the transport, not through the Messenger queue: the invoice is
+                // only marked as sent once the mail server has accepted the mail.
+                if (!$this->mailerLimiter->create()->consume()->isAccepted()) {
+                    throw new \RuntimeException('limite horaire d\'envoi de mails atteinte, réessayez plus tard.');
+                }
+                $this->mailerTransport->send($message);
                 $facture->setEnvoyeA($data['to']);
                 $facture->setEnvoyeLe(new DateTime());
                 $this->addFlash('success', 'La facture a bien été envoyée');
