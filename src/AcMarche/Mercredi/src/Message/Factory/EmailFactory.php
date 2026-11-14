@@ -28,8 +28,10 @@ final class EmailFactory
          * Pieces jointes.
          */
         if (null !== ($uploadedFile = $message->getFile())) {
-            $notification->attachFromPath(
-                $uploadedFile->getRealPath(),
+            // Load the content now: the mails are queued and the uploaded temp file
+            // is gone by the time the worker sends them.
+            $notification->attach(
+                file_get_contents($uploadedFile->getRealPath()),
                 $uploadedFile->getClientOriginalName(),
                 $uploadedFile->getClientMimeType()
             );

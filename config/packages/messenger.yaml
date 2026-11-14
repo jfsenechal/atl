@@ -20,7 +20,8 @@ framework:
             messenger.bus.default: []
 
         routing:
-            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
+            # Mails are sent directly (SendEmailMessage is not routed). Mass mailings
+            # are queued explicitly on "async" by AcMarche\Mercredi\Mailer\BulkMailer.
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
 

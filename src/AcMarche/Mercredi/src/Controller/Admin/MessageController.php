@@ -95,9 +95,9 @@ final class MessageController extends AbstractController
         $form = $this->createForm(MessageType::class, $message);
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->messageHandler->handle($message);
+            $count = $this->messageHandler->handle($message);
 
-            $this->addFlash('success', 'Le message a bien été envoyé');
+            $this->addFlash('success', $count.' mail(s) mis en file d\'envoi, ils partiront dans les prochaines minutes');
 
             return $this->redirectToRoute('mercredi_message_index');
         }
@@ -134,9 +134,9 @@ final class MessageController extends AbstractController
         $form = $this->createForm(MessageType::class, $message);
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->messageHandler->handle($message);
+            $count = $this->messageHandler->handle($message);
 
-            $this->addFlash('success', 'Le message a bien été envoyé');
+            $this->addFlash('success', $count.' mail(s) mis en file d\'envoi, ils partiront dans les prochaines minutes');
 
             return $this->redirectToRoute('mercredi_admin_presence_index');
         }
@@ -161,9 +161,9 @@ final class MessageController extends AbstractController
         $form = $this->createForm(MessageType::class, $message);
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->messageHandler->handle($message);
+            $count = $this->messageHandler->handle($message);
 
-            $this->addFlash('success', 'Le message a bien été envoyé');
+            $this->addFlash('success', $count.' mail(s) mis en file d\'envoi, ils partiront dans les prochaines minutes');
 
             $this->searchHelper->deleteSearch(SearchHelper::MESSAGE_INDEX);
 

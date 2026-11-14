@@ -3,35 +3,30 @@
 namespace AcMarche\Mercredi\Message\Handler;
 
 use AcMarche\Mercredi\Entity\Message;
-use AcMarche\Mercredi\Mailer\InitMailerTrait;
-use AcMarche\Mercredi\Mailer\NotificationMailer;
+use AcMarche\Mercredi\Mailer\BulkMailer;
 use AcMarche\Mercredi\Message\Factory\EmailFactory;
 use AcMarche\Mercredi\Message\Repository\MessageRepository;
-use Symfony\Component\HttpFoundation\RequestStack;
 
-final class MessageHandler
+final readonly class MessageHandler
 {
-    use InitMailerTrait;
-
     public function __construct(
         private MessageRepository $messageRepository,
         private EmailFactory $emailFactory,
-        private NotificationMailer $notificationMailer,
-        RequestStack $requestStack
+        private BulkMailer $bulkMailer,
     ) {
-
     }
 
-    public function handle(Message $message): void
+    /**
+     * @return int number of mails queued
+     */
+    public function handle(Message $message): int
     {
         $templatedEmail = $this->emailFactory->create($message);
-
-        foreach ($message->getDestinataires() as $addressEmail) {
-            $templatedEmail->to($addressEmail);
-            $this->notificationMailer->sendAsEmailNotification($templatedEmail, $addressEmail);
-        }
+        $count = $this->bulkMailer->queue($templatedEmail, $message->getDestinataires());
 
         $this->messageRepository->persist($message);
         $this->messageRepository->flush();
+
+        return $count;
     }
 }

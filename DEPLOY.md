@@ -135,10 +135,12 @@ The output of each scheduled run is in the OVH cron logs (hosting â†’ **More** â
 
 ## 9. Mail queue worker (once)
 
-Mails sent by the application (an invoice sent from the admin, account mails,
-notifications...) are put in the Messenger `async` queue (database table
-`messenger_messages`). They only leave when the queue is processed, so a
-scheduled task must run the worker.
+Mails are sent directly by default (account mails, login links, contact form,
+an invoice sent from the admin, admin notifications...). Only mass mailings, the
+messages sent from the admin to many parents, are put in the Messenger `async`
+queue (database table `messenger_messages`), one mail per recipient. They only
+leave when the queue is processed, so a scheduled task must run the worker.
+Invoices in bulk are not queued: they go through the invoice cron (section 8).
 
 In the OVH control panel, add a second scheduled task, like the invoice one:
 

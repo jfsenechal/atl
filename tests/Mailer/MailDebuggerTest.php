@@ -54,9 +54,9 @@ final class MailDebuggerTest extends KernelTestCase
         return self::getContainer()->get('limiter.mailer');
     }
 
-    public function testReportsThatMailsGoThroughTheAsyncQueue(): void
+    public function testReportsThatMailsAreSentDirectly(): void
     {
-        self::assertSame(['async'], $this->debugger->mailRouting());
+        self::assertSame([], $this->debugger->mailRouting());
         self::assertStringNotContainsString('secret', $this->debugger->maskedDsn());
     }
 
