@@ -8,4 +8,4 @@ rm -fr var/cache/dev
 rm -fr var/cache/rss
 rm -fr var/log/*
 
-./permissions.sh "$@"
+#./permissions.sh "$@"
