@@ -14,7 +14,6 @@ use AcMarche\Mercredi\Pdf\PdfDownloaderTrait;
 use AcMarche\Mercredi\Tuteur\Utils\TuteurUtils;
 use Exception;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
@@ -28,8 +27,6 @@ class FactureEmailFactory
         private FacturePdfPresenceInterface $facturePdfPresence,
         private FactureFactory $factureFactory,
         private FacturePdfFactoryTrait $facturePdfFactory,
-        #[Autowire(env: 'MERCREDI_EMAILS_FACTURE')]
-        private string $emailsFacture,
     ) {
     }
 
@@ -69,16 +66,6 @@ class FactureEmailFactory
     {
         foreach ($tos as $email) {
             $message->addTo(new Address($email));
-        }
-        if ($this->emailsFacture) {
-            $copies = explode(',', $this->emailsFacture);
-            if (\is_array($copies)) {
-                foreach ($copies as $copy) {
-                    if (filter_var($copy, FILTER_VALIDATE_EMAIL)) {
-                        $message->addBcc(new Address($copy));
-                    }
-                }
-            }
         }
     }
 

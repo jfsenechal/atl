@@ -3,16 +3,13 @@
 {% block body %}
     <div class="card mb-3">
         <div class="card-header">
-            <h3>Envoie des factures planifiée</h3>
+            <h3>Envoie des factures planifiées</h3>
         </div>
         <div class="card-body">
 
             <div class="alert alert-info">
                 L'envoi des factures a été planifié<br/>
                 L'envoi se fera par lot de 50 mails par heure<br/>
-                {% if copies %}
-                    Une copie des factures sera envoyée sur:  <p>{{ copies }}</p>
-                {% endif %}
             </div>
 
             Vous pouvez suivre l'évoluation des envois
