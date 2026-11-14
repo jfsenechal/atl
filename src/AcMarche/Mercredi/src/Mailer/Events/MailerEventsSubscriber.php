@@ -2,14 +2,20 @@
 
 namespace AcMarche\Mercredi\Mailer\Events;
 
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Mailer\Event\FailedMessageEvent;
 use Symfony\Component\Mailer\Event\SentMessageEvent;
 
+/**
+ * Logs on the "mail" channel: written to the log file but never mailed, otherwise a
+ * failing SMTP server makes every failure send an error mail that fails in turn.
+ */
+#[WithMonologChannel('mail')]
 class MailerEventsSubscriber implements EventSubscriberInterface
 {
-    public function __construct(private LoggerInterface $mercredilogger)
+    public function __construct(private readonly LoggerInterface $mercredilogger)
     {
     }
 
