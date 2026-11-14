@@ -46,7 +46,11 @@ class SendFactureCommand extends Command
             $result = $this->factureCronHandler->execute((int) $input->getOption('max'));
         } catch (\Throwable $exception) {
             $failed = true;
-            $result = [['error' => $exception->getMessage()]];
+            $result = [['error' => $exception::class.': '.$exception->getMessage()]];
+            $io->error(\sprintf('%s: %s at %s:%d', $exception::class, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
+            if ($output->isVerbose()) {
+                $io->writeln($exception->getTraceAsString());
+            }
         } finally {
             $lock->release();
         }

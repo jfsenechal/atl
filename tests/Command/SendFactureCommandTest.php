@@ -38,7 +38,7 @@ final class SendFactureCommandTest extends KernelTestCase
     {
         $handler = $this->createMock(FactureCronHandler::class);
         $handler->method('execute')->willThrowException(new \RuntimeException('boom'));
-        $handler->expects(self::once())->method('sendResult')->with([['error' => 'boom']]);
+        $handler->expects(self::once())->method('sendResult')->with([['error' => 'RuntimeException: boom']]);
 
         $tester = $this->createTester($handler);
 

@@ -133,6 +133,18 @@ APP_ENV=prod bin/console mercredi:facture-send
 The output of each scheduled run is in the OVH cron logs (hosting → **More** →
 **Logs**), and the report is mailed after each run that did something.
 
+Both cron scripts (`bin/cron-facture.php`, `bin/cron-messenger.php`) go through
+`bin/cron-bootstrap.php`, which prints a START line (PHP version, `APP_ENV`,
+`memory_limit`, `max_execution_time`), runs the command in verbose mode, prints
+any exception or PHP fatal error with file, line and stack trace, and ends with
+an END line (exit code, duration, peak memory). A one-line summary of every run
+is also appended to `var/log/cron.log`.
+
+OVH disables a scheduled task after 10 consecutive failed runs (exit code other
+than 0, or too long). Read `var/log/cron.log` or the OVH cron logs, fix the
+cause, run the script once by hand (`php bin/cron-facture.php`), then re-enable
+the task in the OVH control panel.
+
 ## 9. Mail queue worker (once)
 
 Mails are sent directly by default (account mails, login links, contact form,
