@@ -42,7 +42,12 @@ when@prod:
                 buffer_size: 50 # How many messages should be saved? Prevent memory leaks
             grouped:
                 type: group
-                members: [ nested, deduplicated ]
+                members: [ nested, mail_safe ]
+            # A failing error mail (SMTP refused, OVH forbids mail from SSH...) must not
+            # crash the request or the cron: the error is already written by "nested".
+            mail_safe:
+                type: whatfailuregroup
+                members: [ deduplicated ]
             # Mail the buffered log to the webmaster when an error occurs (same error mailed once per 60 s)
             deduplicated:
                 type: deduplication
