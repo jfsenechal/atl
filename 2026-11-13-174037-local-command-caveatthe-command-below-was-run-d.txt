@@ -1,0 +1,1809 @@
+ ▐▛███▛█   Claude Code v2.1.322
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   /var/www/atl
+
+
+❯ /clear                                                                        
+
+❯ i want to test to send facture on ovh prod server but no to real addresses    
+
+  Listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● Bash(cat > config/packages/mailer.yaml <<'EOF'
+      framework:…)
+  ⎿  In BaseNode.php line 523:
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated config/packages/mailer.yaml (+8 -0)
+       7          mailer:
+       8              envelope:
+       9                  recipients: ['webmaster@marche.be']
+      10 +                                                               
+      11 +when@prod:                                                     
+      12 +    framework:                                                 
+      13 +        mailer:                                                
+      14 +            envelope:                                          
+      15 +                # Comma-separated list: when set, every mail is
+         + delivered only to                                             
+      16 +                # these addresses (the To/Cc headers are kept a
+         +s-is). Empty = normal sending.                                 
+      17 +                recipients: '%env(csv:MAILER_RECIPIENTS)%'     
+  ⎿  Updated .env (+2 -0)
+      45  
+      46  ###> symfony/mailer ###
+      47  MAILER_DSN=null://null
+      48 +# Prod only: comma-separated addresses that receive ALL mails i
+         +nstead of the real recipients (empty = off)                    
+      49 +MAILER_RECIPIENTS=                                             
+      50  ###< symfony/mailer ###
+      51  
+      52  ###> knplabs/knp-snappy-bundle ###
+
+● The env-var placeholder isn't accepted by the mailer envelope.recipients
+  config. I'm switching to the existing SetToListener, which will read the env
+  var and redirect each mail's envelope.
+
+● Bash(git checkout config/packages/mailer.yaml && cat >
+      src/AcMarche/Mercredi/src/Mailer/SetToListener.php <<'EOF'
+      <?php…)
+  ⎿  Updated 1 path from the index
+           values that are compatible with their type declarations.
+  ⎿  Updated config/packages/mailer.yaml (+0 -8)
+  ⎿  Updated src/AcMarche/Mercredi/src/Mailer/SetToListener.php (+19 -13)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(mkdir -p tests/Mailer && cat > tests/Mailer/SetToListenerTest.php <<'EOF'
+      <?php…)
+  ⎿  Runtime:       PHP 8.5.12
+     Configuration: /var/www/atl/phpunit.dist.xml
+     … +6 lines (ctrl+o to expand)
+  ⎿  Created tests/Mailer/SetToListenerTest.php (+54 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Mailer;                                    
+       4 +                                                               
+       5 +use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;        
+       6 +use Symfony\Component\Mailer\Transport\TransportInterface;     
+       7 +use Symfony\Component\Mime\Address;                            
+       8 +use Symfony\Component\Mime\Email;                              
+       9 +                                                               
+      10 +final class SetToListenerTest extends KernelTestCase           
+      11 +{                                                              
+      12 +    protected function tearDown(): void                        
+      13 +    {                                                          
+      14 +        parent::tearDown();                                    
+      15 +        unset($_ENV['MAILER_RECIPIENTS'], $_SERVER['MAILER_RECI
+         +PIENTS']);                                                     
+      16 +    }                                                          
+      17 +                                                               
+      18 +    public function testRedirectsAllMailsWhenRecipientsAreSet()
+         +: void                                                         
+      19 +    {                                                          
+      20 +        $_ENV['MAILER_RECIPIENTS'] = $_SERVER['MAILER_RECIPIENT
+         +S'] = 'test1@example.com, test2@example.com';                  
+      21 +                                                               
+      22 +        $sent = $this->send();                                 
+      23 +                                                               
+      24 +        self::assertSame(                                      
+      25 +            ['test1@example.com', 'test2@example.com'],        
+      26 +            array_map(static fn (Address $a) => $a->getAddress(
+         +), $sent->getEnvelope()->getRecipients()),                     
+      27 +        );                                                     
+      28 +    }                                                          
+      29 +                                                               
+      30 +    public function testSendsToRealRecipientsWhenEmpty(): void 
+      31 +    {                                                          
+      32 +        $_ENV['MAILER_RECIPIENTS'] = $_SERVER['MAILER_RECIPIENT
+         +S'] = '';                                                      
+      33 +                                                               
+      34 +        $sent = $this->send();                                 
+      35 +                                                               
+      36 +        self::assertSame(                                      
+      37 +            ['parent@example.com', 'other@example.com'],       
+      38 +            array_map(static fn (Address $a) => $a->getAddress(
+         +), $sent->getEnvelope()->getRecipients()),                     
+      39 +        );                                                     
+      40 +    }                                                          
+     … 14 more lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='DEPLOY.md'; s=open(p).read()…)
+  ⎿   M .env
+      M DEPLOY.md
+      M src/AcMarche/Mercredi/src/Mailer/SetToListener.php
+     ?? tests/Mailer/
+  ⎿  Updated DEPLOY.md (+6 -0)
+      129  APP_ENV=prod bin/console mercredi:facture-send
+      130  ```
+      131  
+      132 +To test sending in prod without mailing parents, add to `.env.
+          +local` on the                                                 
+      133 +server `MAILER_RECIPIENTS=you@example.com` (comma-separated fo
+          +r several): every                                             
+      134 +mail is then delivered only to those addresses, the To header 
+          +still shows the                                               
+      135 +real recipient. The invoices are still marked as sent (`envoye
+          +Le`), so clear                                                
+      136 +that field afterwards. Remove the line (or leave it empty) to 
+          +send for real.                                                
+      137 +                                                              
+      138  The output of each scheduled run is in the OVH cron logs (host
+           ing → **More** →
+      139  **Logs**), and the report is mailed after each run that did so
+           mething.
+      140  
+
+● I added a switch that sends every mail (invoices, alerts, the run report) to
+  your own address instead of the parents' addresses. The two new tests and the
+  command tests pass (6/6).
+
+  What changed
+  - src/AcMarche/Mercredi/src/Mailer/SetToListener.php: this class did nothing
+    before. It now reads a new MAILER_RECIPIENTS setting, and when that is set,
+    each mail is delivered only to those addresses. The "To" line in the mail
+    still shows the parent it was meant for, so you can check who would have
+    received each invoice. This works with the direct-SMTP sending in
+    FactureCronHandler.
+  - .env: MAILER_RECIPIENTS= is added and left empty, which means normal
+    sending.
+  - tests/Mailer/SetToListenerTest.php: checks that mails are redirected when
+    the setting has a value and go to the real recipients when it's empty.
+  - DEPLOY.md: a short note on how to do a test run.
+
+  On the OVH server
+  1. Deploy, then add this to .env.local:
+  MAILER_RECIPIENTS=you@example.com
+     For several addresses, separate them with commas. If you ran composer 
+     dump-env prod there, .env.local is ignored: put the setting in
+     .env.local.php or run dump-env again.
+  2. Run APP_ENV=prod bin/console mercredi:facture-send --max=2 so only a few
+     invoices go out.
+  3. When you're done, remove the line or leave it empty.
+
+  Before you test: the run changes real data
+  - Each invoice that is "sent" gets envoyeLe and envoyeA filled in, so the real
+    run will skip it later. Clear those two fields on the test invoices
+    afterwards.
+  - A FactureCron gets done = 1 once no invoices are left, and its dateLastSync
+    is updated. Reset those too.
+  - Safest option: create a FactureCron for an old month whose invoices are
+    already paid, or for a small set of invoices.
+
+  Nothing is committed yet. Do you want me to commit it?
+
+✻ Brewed for 1m 16s · done 1:37 PM
+
+❯ add a personnal error page for 404 and 500                                    
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● Error templates already exist in the Mercredi bundle. Checking whether Symfony
+  actually uses them.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Custom error pages already exist in the bundle, but there's no @Twig
+  namespace, so Symfony may not find them. Checking how this Symfony version
+  locates error templates.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The existing pages are in the wrong place: Symfony only picks up overrides
+  from templates/bundles/TwigBundle/ at the project root. Reading the existing
+  designs before moving them.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'm moving the four override files into
+  templates/bundles/TwigBundle/Exception/ and making the 500 page hide the
+  exception message and avoid the database-backed layout. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the 500 page and the 404 contact link:
+
+● Bash(python3 - <<'EOF'
+      import re…)
+  ⎿  diff --git a/src/AcMarche/Mercredi/templates/page/errors/error404.html
+     .twig b/src/AcMarche/Mercredi/templates/page/errors/error404.html.twig
+     index 1928bfa..72e3384 100644
+     … +53 lines (ctrl+o to expand)
+  ⎿  Updated src/AcMarche/Mercredi/templates/page/errors/error500.html.twig
+     (+5 -19)
+       1 -{% extends '@AcMarcheMercredi/front/layout.html.twig' %}       
+       1 +{# Extends the base layout without the front layout: the front 
+         +menu, title and footer                                         
+       2 +   are sub-requests that hit the database, which may be the cau
+         +se of the error. #}                                            
+       3 +{% extends '@AcMarcheMercredi/base.html.twig' %}               
+       4  
+       5  {% block title %}Erreur serveur - Mercredi{% endblock %}
+       6  
+       7 +{% block footer %}{% endblock %}                               
+       8 +                                                               
+       9  {% block body -%}
+      10  
+      11      <div class="container mt-5">
+     ...
+      66                              </ul>
+      67                          </div>
+      68  
+      65 -                        <!-- Error Details Alert (if in debug m
+         -ode) -->                                                       
+      66 -                        {% if status_code is defined and status
+         -_text is defined %}                                            
+      67 -                            <div class="alert alert-danger d-fl
+         -ex align-items-start" role="alert"                             
+      68 -                                 style="max-width: 500px; margi
+         -n: 0 auto 2rem;">                                              
+      69 -                                <i class="fas fa-exclamation-tr
+         -iangle me-2 mt-1"></i>                                         
+      70 -                                <div class="text-start">       
+      71 -                                    <strong>Détails techniques 
+         -:</strong>                                                     
+      72 -                                    <div class="mt-2 small font
+         --monospace">                                                   
+      73 -                                        <div><strong>Code :</st
+         -rong> {{ status_code }}</div>                                  
+      74 -                                        <div><strong>Statut :</
+         -strong> {{ status_text }}</div>                                
+      75 -                                        {% if exception is defi
+         -ned and exception.message is defined %}                        
+      76 -                                            <div class="mt-2"><
+         -strong>Message :</strong> {{ exception.message }}</div>        
+      77 -                                        {% endif %}            
+      78 -                                    </div>                     
+      79 -                                </div>                         
+      80 -                            </div>                             
+      81 -                        {% endif %}                            
+      82 -                                                               
+      69                          <!-- Action Buttons -->
+      70                          <div class="d-grid gap-2 d-md-flex just
+          ify-content-md-center mb-4">
+      71                              <a href="{{ path('mercredi_front_ho
+          me') }}" class="btn btn-outline-secondary btn-lg px-4">
+  ⎿  Updated src/AcMarche/Mercredi/templates/page/errors/error404.html.twig
+     (+1 -1)
+      74                              </p>
+      75                              <p class="text-muted small">
+      76                                  Si le problème persiste, n'hési
+          tez pas à
+      77 -                                <a href="{{ path('mercredi_fron
+         -t_home') }}" class="text-decoration-none">nous                 
+      77 +                                <a href="{{ path('mercredi_fron
+         +t_contact') }}" class="text-decoration-none">nous              
+      78                                      contacter</a>
+      79                                  ou à consulter notre <a href="{
+          { path('mercredi_front_home') }}"
+      80                                                          class="
+          text-decoration-none">page d'aide</a>.
+
+● Checking the generic error.html.twig for the same leak, then testing.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Update(src/AcMarche/Mercredi/templates/page/errors/error.html.twig)
+  ⎿  Removed 8 lines
+      80                                              <code>{{ status_tex
+          t }}</code>
+      81                                          </div>
+      82                                      {% endif %}
+      83 -                                    {% if exception is defined 
+         -and exception.message is defined %}                            
+      84 -                                        <div class="mb-2">     
+      85 -                                            <strong><i class="f
+         -as fa-comment-dots"></i> Message :</strong>                    
+      86 -                                            <div class="mt-1 p-
+         -2 bg-light rounded">                                           
+      87 -                                                <small class="t
+         -ext-muted font-monospace">{{ exception.message }}</small>      
+      88 -                                            </div>             
+      89 -                                        </div>                 
+      90 -                                    {% endif %}                
+      83                                      <div class="mt-3 small text
+          -muted">
+      84                                          <i class="fas fa-clock"
+          ></i> {{ "now"|date("d/m/Y à H:i:s") }}
+      85                                      </div>
+
+● Testing with a real HTTP request in non-debug mode, the way a visitor sees it:
+
+● Bash(mkdir -p tests/Controller && cat > tests/Controller/ErrorPageTest.php
+      <<'EOF'
+      <?php…)
+  ⎿  PHPUnit 13.4.7 by Sebastian Bergmann and contributors.
+
+     Runtime:       PHP 8.5.12
+     … +8 lines (ctrl+o to expand)
+  ⎿  Created tests/Controller/ErrorPageTest.php (+42 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Controller;                                
+       4 +                                                               
+       5 +use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;           
+       6 +use Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererI
+         +nterface;                                                      
+       7 +use Symfony\Component\HttpKernel\Exception\HttpException;      
+       8 +use Twig\Environment;                                          
+       9 +                                                               
+      10 +final class ErrorPageTest extends WebTestCase                  
+      11 +{                                                              
+      12 +    public function testCustomTemplatesOverrideTheDefaultErrorP
+         +ages(): void                                                   
+      13 +    {                                                          
+      14 +        self::bootKernel();                                    
+      15 +        $loader = self::getContainer()->get(Environment::class)
+         +->getLoader();                                                 
+      16 +                                                               
+      17 +        self::assertTrue($loader->exists('@Twig/Exception/error
+         +404.html.twig'));                                              
+      18 +        self::assertTrue($loader->exists('@Twig/Exception/error
+         +500.html.twig'));                                              
+      19 +        self::assertTrue($loader->exists('@Twig/Exception/error
+         +.html.twig'));                                                 
+      20 +    }                                                          
+      21 +                                                               
+      22 +    public function testUnknownPageShowsCustom404(): void      
+      23 +    {                                                          
+      24 +        $client = static::createClient(['debug' => false]);    
+      25 +        $client->request('GET', '/this-page-does-not-exist');  
+      26 +                                                               
+      27 +        self::assertResponseStatusCodeSame(404);               
+      28 +        self::assertSelectorTextContains('h1', 'Page non trouvé
+         +e');                                                           
+      29 +    }                                                          
+      30 +                                                               
+      31 +    public function testServerErrorShowsCustom500WithoutLeaking
+         +TheMessage(): void                                             
+      32 +    {                                                          
+      33 +        self::bootKernel(['debug' => false]);                  
+      34 +        $renderer = self::getContainer()->get('error_renderer.h
+         +tml');                                                         
+      35 +        \assert($renderer instanceof ErrorRendererInterface);  
+      36 +                                                               
+      37 +        $html = $renderer->render(new \RuntimeException('SQLSTA
+         +TE secret password'))->getAsString();                          
+      38 +                                                               
+      39 +        self::assertStringContainsString('Problème technique', 
+         +$html);                                                        
+      40 +        self::assertStringNotContainsString('SQLSTATE secret pa
+         +ssword', $html);                                               
+     … 2 more lines (ctrl+o to expand)
+
+● All 3 pass, including the 404 through a real request. Cleaning up an unused
+  import and running the full suite:
+● Bash(sed -i '/use Symfony\\Component\\HttpKernel\\Exception\\HttpException;/d'
+      tests/Controller/ErrorPageTest.php && php bin/phpunit 2>&1 | tail -3; git
+      status --sho…)
+  ⎿  Time: 00:00.561, Memory: 18.00 MB
+
+     OK (18 tests, 236 assertions)
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated tests/Controller/ErrorPageTest.php (+0 -1)
+       4  
+       5  use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+       6  use Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererI
+          nterface;
+       7 -use Symfony\Component\HttpKernel\Exception\HttpException;      
+       7  use Twig\Environment;
+       8  
+       9  final class ErrorPageTest extends WebTestCase
+
+● Your custom 404 and 500 pages now show up. The project already had them, with
+  their own design in src/AcMarche/Mercredi/templates/page/errors/, but Symfony
+  never used them because they were in the wrong folder. I moved them rather
+  than creating new ones. All 18 tests pass, including 3 new ones.
+
+  What changed
+  - Moved the error templates: Symfony only looks for custom error pages in
+    templates/bundles/TwigBundle/Exception/ at the project root. The four small
+    files that point to your pages (error404, error500, error403,
+    error.html.twig) were in the bundle's own templates/bundles/, which is never
+    checked. I moved them to the right place, so 403 errors and other error
+    codes now get your pages too.
+  - The 500 page no longer shows error details: it used to show the internal
+    error message to visitors, which could include SQL errors or credentials. I
+    removed it from error500.html.twig and also from the page used for other
+    error codes, error.html.twig. Real errors are still written to
+    var/log/prod.log.
+  - The 500 page no longer depends on the database: it used the front-site
+    layout, which loads the menu, title and footer from the database. If the
+    database itself was the problem, that page would fail too and Symfony would
+    show its own default page. It now uses the plain base layout with no footer.
+  - Fixed the 404 contact link: "nous contacter" linked to the home page; it now
+    goes to /contact.
+
+  Tests: tests/Controller/ErrorPageTest.php checks that:
+  - requesting a page that doesn't exist, with debug off, returns your 404;
+  - a server error renders your 500 page and doesn't show the error message.
+
+  To see the pages in dev, go to /_error/404 and /_error/500. On the OVH server,
+  clear the prod cache after you deploy.
+
+  Nothing is committed yet, and the mail test changes are still uncommitted too.
+  Do you want me to commit them, as two separate commits?
+
+✻ Cooked for 1m 28s · done 1:47 PM
+
+❯ the error page doesn't display at the right place, it is below see sreenshot  
+  in data/Mercredi-11-13-2026_01_54_PM.png                                      
+  because no redirect                                                           
+  and when crashed no error in var/log (i am on my prod server, not local)      
+
+  Read 1 file (ctrl+o to expand)
+
+● The error page HTML landed below the form instead of replacing it, which
+  suggests Turbo or a frame is handling the submission. I'm checking the send
+  form, the controller, and the prod logging config next. · summary
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Monolog is sending prod errors to php://stderr, which on OVH shared hosting
+  lands in the Apache error log and explains the empty var/log. I'm reading the
+  controller behind this form next. · summary
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● The crash happens before the redirect, so Turbo receives the 500 response to
+  the form POST and draws it itself. Checking how Turbo 8 renders error
+  responses:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Turbo 8's renderError on a 5xx form POST drops the page's styles and stuck
+  layout, so I'm adding a hook that swaps in only the error page's body. Next
+  I'll check what in sendOneFacture can throw outside the try. · summary
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● I'm making three fixes: prod logs going to var/log/prod.log, proper 5xx error
+  pages for Turbo form submits, and moving PDF generation inside the try, since
+  the server-side wkhtmltopdf call is the likeliest crash cause. · summary
+
+● Bash(python3 - <<'EOF'
+      p='config/packages/monolog.yaml'; s=open(p).read()…)
+  ⎿  diff --git a/src/AcMarche/Mercredi/src/Controller/Admin/FactureSendCon
+     troller.php b/src/AcMarche/Mercredi/src/Controller/Admin/FactureSendCo
+     ntroller.php
+     … +38 lines (ctrl+o to expand)
+  ⎿  Updated config/packages/monolog.yaml (+4 -3)
+      54                  level: debug
+      55                  formatter: monolog.formatter.html
+      56                  content_type: text/html
+      57 +            # Shared hosting (OVH): stderr ends up in the Apach
+         +e logs, so write to var/log                                    
+      58              nested:
+      58 -                type: stream                                   
+      59 -                path: php://stderr                             
+      59 +                type: rotating_file                            
+      60 +                path: "%kernel.logs_dir%/%kernel.environment%.l
+         +og"                                                            
+      61 +                max_files: 30                                  
+      62                  level: debug
+      61 -                formatter: monolog.formatter.json              
+      63              console:
+      64                  type: console
+      65                  process_psr_3_messages: false
+  ⎿  Updated
+     src/AcMarche/Mercredi/src/Controller/Admin/FactureSendController.php
+     (+8 -1)
+      14  use AcMarche\Mercredi\Mailer\NotificationMailer;
+      15  use AcMarche\Mercredi\Parameter\Option;
+      16  use DateTime;
+      17 +use Psr\Log\LoggerInterface;                                   
+      18  use Symfony\Bundle\FrameworkBundle\Controller\AbstractControlle
+          r;
+      19  use Symfony\Component\HttpFoundation\Request;
+      20  use Symfony\Component\HttpFoundation\Response;
+     ...
+      31          private FacturePdfFactoryTrait $facturePdfFactory,
+      32          private FactureEmailFactory $factureEmailFactory,
+      33          private NotificationMailer $notificationMailer,
+      34 +        private LoggerInterface $logger,                       
+      35      ) {}
+      36  
+      37      #[Route(path: '/select/month', name: 'mercredi_admin_factur
+          e_send_select_month', methods: ['GET', 'POST'])]
+     ...
+      74  
+      75              $message = $this->factureEmailFactory->messageFactu
+          re($data['sujet'], $data['texte']);
+      76              $this->factureEmailFactory->setTos($message, [$data
+          ['to']]);
+      75 -            $this->factureEmailFactory->attachFactureOnTheFly($
+         -facture, $message);                                            
+      77  
+      78              try {
+      79 +                $this->factureEmailFactory->attachFactureOnTheF
+         +ly($facture, $message);                                        
+      80                  $this->notificationMailer->sendAsEmailNotificat
+          ion($message);
+      81                  $facture->setEnvoyeA($data['to']);
+      82                  $facture->setEnvoyeLe(new DateTime());
+      83                  $this->addFlash('success', 'La facture a bien é
+          té envoyée');
+      84                  $this->factureRepository->flush();
+      85              } catch (\Exception $exception) {
+      86 +                $this->logger->error('Envoi de la facture {id} 
+         +impossible: {message}', [                                      
+      87 +                    'id' => $facture->getId(),                 
+      88 +                    'message' => $exception->getMessage(),     
+      89 +                    'exception' => $exception,                 
+      90 +                ]);                                            
+      91                  $this->addFlash('danger', 'Erreur d\'envoie '.$
+          exception->getMessage());
+      92              }
+      93  
+  ⎿  Updated assets/app.js (+18 -0)
+      21  
+      22  loadCkeditor();
+      23  document.addEventListener('turbo:load', loadCkeditor);
+      24 +                                                               
+      25 +// Turbo renders a 5xx response with its own error renderer, wh
+         +ich swaps the <head> and                                       
+      26 +// loses the styles loaded by the importmap. Show the error pag
+         +e in the current document instead.                             
+      27 +document.addEventListener('turbo:before-fetch-response', async 
+         +(event) => {                                                   
+      28 +    const response = event.detail.fetchResponse;               
+      29 +    if (!response.serverError) {                               
+      30 +        return;                                                
+      31 +    }                                                          
+      32 +    event.preventDefault();                                    
+      33 +    const html = await response.responseHTML;                  
+      34 +    if (!html) {                                               
+      35 +        return;                                                
+      36 +    }                                                          
+      37 +    const page = new DOMParser().parseFromString(html, 'text/ht
+         +ml');                                                          
+      38 +    document.title = page.title;                               
+      39 +    document.body.replaceWith(document.adoptNode(page.body));  
+      40 +    window.scrollTo(0, 0);                                     
+      41 +});                                                            
+
+● Validating the changes:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The mail-redirect test from the previous task now fails when the whole suite
+  runs. Checking whether it depends on test order:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● It fails even on its own, so it doesn't depend on test order. Checking whether
+  the listener is still registered:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The test fails because #[AsEventListener] is now commented out in
+  SetToListener.php. You probably did that in your IDE. Checking git:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The listener was committed as disabled, so I'm leaving it that way. The
+  untracked SetToListenerTest.php fails for that reason alone; delete it or
+  re-enable the listener, since all other tests pass. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I fixed three things: where the error page appears, where prod errors are
+  logged, and the crash on the "Envoyer la facture" form. Nothing has been
+  checked on the server or in a browser yet. The PHP side passes the other 16
+  tests and the prod config validates.
+
+  1. Error page shown below the form
+  When a form is submitted, Turbo (the library that makes the site's forms and
+  links work without full page reloads) draws a 500 answer its own way. It drops
+  the page's styles, so you got an unstyled page stuck below the form. I added
+  a handler in assets/app.js: when the server answers with an error, the error
+  page now replaces the current page, with the normal styles. This also works
+  when clicking a link to a page that crashes.
+
+  2. No error in var/log
+  In prod, logs were written to php://stderr. On OVH shared hosting that ends up
+  in OVH's own logs, not in your project. They now go to var/log/prod.log, with
+  one file per day, kept for 30 days. Your current crash should still be in the
+  OVH panel under Logs, and the error-email setting should also have sent it to
+  webmaster@marche.be.
+
+  3. The crash itself
+  In FactureSendController::sendOneFacture(), the PDF was generated outside the
+  try, so any problem there became a 500. The PDF is made with wkhtmltopdf,
+  which may not be installed or allowed on OVH. I'm guessing that's the cause,
+  since there's no log to confirm it. It's now inside the try: the admin goes
+  back to the invoice page with a red message giving the reason, and the error
+  is written to the log.
+
+  To deploy: run APP_ENV=prod bin/console asset-map:compile (app.js changed),
+  then clear the prod cache. Then try sending again. You'll get either the red
+  message or a log entry, and that will tell us the real cause.
+
+  About the mail-redirect test: your "desactive" commit disables SetToListener,
+  so tests/Mailer/SetToListenerTest.php fails. It isn't committed yet. Tell me
+  whether to delete it or turn the listener back on.
+
+✻ Churned for 2m 8s · done 1:58 PM
+
+❯ delete the mailer test and commit                                             
+
+● Bash(rm -r tests/Mailer && git diff .env DEPLOY.md)
+  ⎿  diff --git a/.env b/.env
+     index 06373ff..f3f7c84 100644
+     --- a/.env
+     … +26 lines (ctrl+o to expand)
+  ⎿  Deleted tests/Mailer/SetToListenerTest.php (+0 -54)
+       1 -<?php                                                          
+       2 -                                                               
+       3 -namespace App\Tests\Mailer;                                    
+       4 -                                                               
+       5 -use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;        
+       6 -use Symfony\Component\Mailer\Transport\TransportInterface;     
+       7 -use Symfony\Component\Mime\Address;                            
+       8 -use Symfony\Component\Mime\Email;                              
+       9 -                                                               
+      10 -final class SetToListenerTest extends KernelTestCase           
+      11 -{                                                              
+      12 -    protected function tearDown(): void                        
+      13 -    {                                                          
+      14 -        parent::tearDown();                                    
+      15 -        unset($_ENV['MAILER_RECIPIENTS'], $_SERVER['MAILER_RECI
+         -PIENTS']);                                                     
+      16 -    }                                                          
+      17 -                                                               
+      18 -    public function testRedirectsAllMailsWhenRecipientsAreSet()
+         -: void                                                         
+      19 -    {                                                          
+      20 -        $_ENV['MAILER_RECIPIENTS'] = $_SERVER['MAILER_RECIPIENT
+         -S'] = 'test1@example.com, test2@example.com';                  
+      21 -                                                               
+      22 -        $sent = $this->send();                                 
+      23 -                                                               
+      24 -        self::assertSame(                                      
+      25 -            ['test1@example.com', 'test2@example.com'],        
+      26 -            array_map(static fn (Address $a) => $a->getAddress(
+         -), $sent->getEnvelope()->getRecipients()),                     
+      27 -        );                                                     
+      28 -    }                                                          
+      29 -                                                               
+      30 -    public function testSendsToRealRecipientsWhenEmpty(): void 
+      31 -    {                                                          
+      32 -        $_ENV['MAILER_RECIPIENTS'] = $_SERVER['MAILER_RECIPIENT
+         -S'] = '';                                                      
+      33 -                                                               
+      34 -        $sent = $this->send();                                 
+      35 -                                                               
+      36 -        self::assertSame(                                      
+      37 -            ['parent@example.com', 'other@example.com'],       
+      38 -            array_map(static fn (Address $a) => $a->getAddress(
+         -), $sent->getEnvelope()->getRecipients()),                     
+      39 -        );                                                     
+      40 -    }                                                          
+     … 14 more lines (ctrl+o to expand)
+
+● The .env and DEPLOY.md changes only describe MAILER_RECIPIENTS, which you
+  disabled. I'll leave them out of this commit and commit only the error-page
+  and logging fixes.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Git found nothing to commit. Checking whether those files were already
+  committed:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Your latest commit ("changed") only updates bin/wkhtmltopdf, yet my three
+  files show no changes either. Looking for where they went:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I deleted tests/Mailer/, but there was nothing left to commit: you had already
+  committed my changes yourself in 20ac19a fix. That commit has the Turbo
+  error-page handler, prod logging to var/log/prod.log, and the PDF generation
+  moved inside the try. After it, your 3a01589 changed commit updated
+  bin/wkhtmltopdf, which is probably the real cause of the crash.
+
+  The mailer test was never committed, so deleting it doesn't change git.
+
+  Two files still have uncommitted changes, and I left them alone on purpose:
+  .env adds MAILER_RECIPIENTS= and DEPLOY.md explains how to use it. Both
+  describe the mail redirect you turned off. I can discard them, or commit them
+  if you plan to turn the listener back on.
+
+✻ Sautéed for 21s · done 2:14 PM
+❯ discard the .env and DEPLOY.md changes                                        
+
+● Bash(git checkout -- .env DEPLOY.md && git status --short)
+  ⎿  Updated .env (+0 -2)
+  ⎿  Updated DEPLOY.md (+0 -6)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+
+● I discarded the .env and DEPLOY.md changes, and git now shows no uncommitted
+  changes.
+
+  SetToListener.php still reads MAILER_RECIPIENTS, but the listener is turned
+  off, so the missing variable has no effect. If you turn it back on, add
+  MAILER_RECIPIENTS= to .env too.
+
+✻ Brewed for 3s · done 2:14 PM
+
+❯ push it                                                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● There was nothing to push: master is already up to date with origin/master, so
+  you had already pushed your commits, including 20ac19a fix and 3a01589 
+  changed. The working tree is clean.
+
+✻ Churned for 5s · done 2:15 PM
+
+❯ when i try to send one facture,                                               
+  https://titi.visitmarche.be/admin/facture/15840/show                          
+  no error but mail doesn't arrive                                              
+  create a page to debug mall transition                                        
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Invoices are likely stuck because SendEmailMessage goes to an async queue that
+  nothing consumes on OVH since the old cron consumer was removed; the debug
+  page should confirm it. I'm checking how the admin pages are built next. 
+  · summary
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● I'm building an /admin/mail-debug page that shows the mailer config, invoice
+  routing, and the waiting queues, with a test-send form and a button to process
+  the queue. First I'm checking a few dependencies. · summary
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● I have what I need. Writing a MailDebugger service, which does the work so the
+  controller stays thin, plus the controller, a form, the template and a menu
+  link.
+
+● Bash(mkdir -p src/AcMarche/Mercredi/src/Mailer/Debug
+      src/AcMarche/Mercredi/templates/admin/mail_debug && cat >
+      src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.ph…)
+  ⎿  vendor/symfony/security-http/Attribute/IsCsrfTokenValid.php:18:final c
+     lass IsCsrfTokenValid
+      [OK] The container was linted successfully: all services are injected
+     … +2 lines (ctrl+o to expand)
+  ⎿  Created
+     src/AcMarche/Mercredi/src/Controller/Admin/MailDebugController.php
+     (+83 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace AcMarche\Mercredi\Controller\Admin;                  
+       4 +                                                               
+       5 +use AcMarche\Mercredi\Mailer\Debug\MailDebugger;               
+       6 +use AcMarche\Mercredi\Mailer\Debug\MailDebugType;              
+       7 +use Symfony\Bundle\FrameworkBundle\Controller\AbstractControlle
+         +r;                                                             
+       8 +use Symfony\Component\HttpFoundation\Request;                  
+       9 +use Symfony\Component\HttpFoundation\Response;                 
+      10 +use Symfony\Component\Routing\Attribute\Route;                 
+      11 +use Symfony\Component\Security\Http\Attribute\IsCsrfTokenValid;
+      12 +use Symfony\Component\Security\Http\Attribute\IsGranted;       
+      13 +                                                               
+      14 +#[IsGranted('ROLE_MERCREDI_ADMIN')]                            
+      15 +#[Route(path: '/mail-debug')]                                  
+      16 +final class MailDebugController extends AbstractController     
+      17 +{                                                              
+      18 +    public function __construct(                               
+      19 +        private readonly MailDebugger $mailDebugger,           
+      20 +    ) {                                                        
+      21 +    }                                                          
+      22 +                                                               
+      23 +    #[Route(path: '/', name: 'mercredi_admin_mail_debug', metho
+         +ds: ['GET', 'POST'])]                                          
+      24 +    public function index(Request $request): Response          
+      25 +    {                                                          
+      26 +        $form = $this->createForm(MailDebugType::class, [      
+      27 +            'from' => $this->mailDebugger->senderAddress(),    
+      28 +            'to' => $this->getUser()?->getUserIdentifier(),    
+      29 +            'subject' => 'Test envoi mail Mercredi',           
+      30 +            'mode' => MailDebugType::MODE_DIRECT,              
+      31 +        ]);                                                    
+      32 +        $form->handleRequest($request);                        
+      33 +                                                               
+      34 +        $sendResult = null;                                    
+      35 +        if ($form->isSubmitted() && $form->isValid()) {        
+      36 +            $data = $form->getData();                          
+      37 +            $email = $this->mailDebugger->createTestEmail($data
+         +['from'], $data['to'], $data['subject']);                      
+      38 +            $sendResult = MailDebugType::MODE_DIRECT === $data[
+         +'mode']                                                        
+      39 +                ? $this->mailDebugger->sendDirect($email)      
+      40 +                : $this->mailDebugger->sendLikeTheApplication($
+         +email);                                                        
+     … 43 more lines (ctrl+o to expand)
+  ⎿  Created src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php (+194 
+     -0)
+        1 +<?php                                                         
+        2 +                                                              
+        3 +namespace AcMarche\Mercredi\Mailer\Debug;                     
+        4 +                                                              
+        5 +use AcMarche\Mercredi\Organisation\Traits\OrganisationProperty
+          +InitTrait;                                                    
+        6 +use Symfony\Bundle\FrameworkBundle\Console\Application;       
+        7 +use Symfony\Component\Console\Input\ArrayInput;               
+        8 +use Symfony\Component\Console\Output\BufferedOutput;          
+        9 +use Symfony\Component\DependencyInjection\Attribute\Autowire; 
+       10 +use Symfony\Component\HttpKernel\KernelInterface;             
+       11 +use Symfony\Component\Mailer\Exception\TransportExceptionInter
+          +face;                                                         
+       12 +use Symfony\Component\Mailer\MailerInterface;                 
+       13 +use Symfony\Component\Mailer\Messenger\SendEmailMessage;      
+       14 +use Symfony\Component\Mailer\Transport\TransportInterface as M
+          +ailerTransportInterface;                                      
+       15 +use Symfony\Component\Messenger\Envelope;                     
+       16 +use Symfony\Component\Messenger\Stamp\ErrorDetailsStamp;      
+       17 +use Symfony\Component\Messenger\Stamp\RedeliveryStamp;        
+       18 +use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
+       19 +use Symfony\Component\Messenger\Transport\Receiver\ListableRec
+          +eiverInterface;                                               
+       20 +use Symfony\Component\Messenger\Transport\Receiver\MessageCoun
+          +tAwareInterface;                                              
+       21 +use Symfony\Component\Messenger\Transport\Sender\SendersLocato
+          +rInterface;                                                   
+       22 +use Symfony\Component\Messenger\Transport\TransportInterface a
+          +s MessengerTransportInterface;                                
+       23 +use Symfony\Component\Mime\Address;                           
+       24 +use Symfony\Component\Mime\Email;                             
+       25 +                                                              
+       26 +/**                                                           
+       27 + * Helps to find out why a mail does not arrive: shows the mai
+          +ler configuration, the                                        
+       28 + * Messenger queues holding mails, and sends test mails with t
+          +he SMTP conversation.                                         
+       29 + */                                                           
+       30 +final class MailDebugger                                      
+       31 +{                                                             
+       32 +    use OrganisationPropertyInitTrait;                        
+       33 +                                                              
+       34 +    public function __construct(                              
+       35 +        #[Autowire(env: 'MAILER_DSN')]                        
+       36 +        private readonly string $mailerDsn,                   
+       37 +        #[Autowire(service: 'mailer.transports')]             
+       38 +        private readonly MailerTransportInterface $mailerTrans
+          +port,                                                         
+       39 +        private readonly MailerInterface $mailer,             
+       40 +        #[Autowire(service: 'messenger.senders_locator')]     
+     … 154 more lines (ctrl+o to expand)
+  ⎿  Created src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugType.php (+42 
+     -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace AcMarche\Mercredi\Mailer\Debug;                      
+       4 +                                                               
+       5 +use Symfony\Component\Form\AbstractType;                       
+       6 +use Symfony\Component\Form\Extension\Core\Type\ChoiceType;     
+       7 +use Symfony\Component\Form\Extension\Core\Type\EmailType;      
+       8 +use Symfony\Component\Form\Extension\Core\Type\TextType;       
+       9 +use Symfony\Component\Form\FormBuilderInterface;               
+      10 +use Symfony\Component\Validator\Constraints as Assert;         
+      11 +                                                               
+      12 +final class MailDebugType extends AbstractType                 
+      13 +{                                                              
+      14 +    public const string MODE_DIRECT = 'direct';                
+      15 +    public const string MODE_APPLICATION = 'application';      
+      16 +                                                               
+      17 +    public function buildForm(FormBuilderInterface $builder, ar
+         +ray $options): void                                            
+      18 +    {                                                          
+      19 +        $builder                                               
+      20 +            ->add('from', EmailType::class, [                  
+      21 +                'label' => 'De',                               
+      22 +                'constraints' => [new Assert\NotBlank(), new As
+         +sert\Email()],                                                 
+      23 +                'help' => 'Adresse d\'expéditeur utilisée pour 
+         +les factures.',                                                
+      24 +            ])                                                 
+      25 +            ->add('to', EmailType::class, [                    
+      26 +                'label' => 'A',                                
+      27 +                'constraints' => [new Assert\NotBlank(), new As
+         +sert\Email()],                                                 
+      28 +            ])                                                 
+      29 +            ->add('subject', TextType::class, [                
+      30 +                'label' => 'Sujet',                            
+      31 +                'constraints' => [new Assert\NotBlank()],      
+      32 +            ])                                                 
+      33 +            ->add('mode', ChoiceType::class, [                 
+      34 +                'label' => 'Mode d\'envoi',                    
+      35 +                'expanded' => true,                            
+      36 +                'choices' => [                                 
+      37 +                    'Directement par SMTP (affiche la conversat
+         +ion avec le serveur)' => self::MODE_DIRECT,                    
+      38 +                    'Comme l\'application (Mailer, passe par la
+         + file si configuré)' => self::MODE_APPLICATION,                
+      39 +                ],                                             
+      40 +            ]);                                                
+     … 2 more lines (ctrl+o to expand)
+
+● Container is valid. Now the template and menu entry:
+
+● Bash(cat > src/AcMarche/Mercredi/templates/admin/mail_debug/index.html.twig
+      <<'EOF'
+      {% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}…)
+  ⎿    mercredi_admin_mail_debug                              GET|POST
+     /admin/mail-debug/
+     … +2 lines (ctrl+o to expand)
+  ⎿  Created
+     src/AcMarche/Mercredi/templates/admin/mail_debug/index.html.twig (+141
+     -0)
+        1 +{% extends '@AcMarcheMercrediAdmin/layout.html.twig' %}       
+        2 +                                                              
+        3 +{% block title %}Diagnostic des mails{% endblock %}           
+        4 +                                                              
+        5 +{% macro queue_table(queue) %}                                
+        6 +    {% if queue.error %}                                      
+        7 +        <div class="alert alert-danger mb-0">Lecture de la fil
+          +e impossible : {{ queue.error }}</div>                        
+        8 +    {% elseif queue.messages is empty %}                      
+        9 +        <p class="text-muted mb-0">Aucun message.</p>         
+       10 +    {% else %}                                                
+       11 +        <div class="table-responsive">                        
+       12 +            <table class="table table-sm table-striped mb-0"> 
+       13 +                <thead>                                       
+       14 +                <tr>                                          
+       15 +                    <th>Id</th>                               
+       16 +                    <th>Sujet</th>                            
+       17 +                    <th>De</th>                               
+       18 +                    <th>A</th>                                
+       19 +                    <th>Tentatives</th>                       
+       20 +                    <th>Dernière erreur</th>                  
+       21 +                </tr>                                         
+       22 +                </thead>                                      
+       23 +                <tbody>                                       
+       24 +                {% for message in queue.messages %}           
+       25 +                    <tr>                                      
+       26 +                        <td>{{ message.id }}</td>             
+       27 +                        <td>{{ message.subject ?? message.type
+          + }}</td>                                                      
+       28 +                        <td>{{ message.from }}</td>           
+       29 +                        <td>{{ message.to }}</td>             
+       30 +                        <td>                                  
+       31 +                            {{ message.retry_count ?? 0 }}    
+       32 +                            {% if message.retried_at %}       
+       33 +                                <br><small class="text-muted">
+          +{{ message.retried_at|date('d/m/Y H:i') }}</small>            
+       34 +                            {% endif %}                       
+       35 +                        </td>                                 
+       36 +                        <td class="text-danger"><small>{{ mess
+          +age.error }}</small></td>                                     
+       37 +                    </tr>                                     
+       38 +                {% endfor %}                                  
+       39 +                </tbody>                                      
+       40 +            </table>                                          
+     … 101 more lines (ctrl+o to expand)
+  ⎿  Updated src/AcMarche/Mercredi/templates/admin/_menu.html.twig (+3 -0)
+      104              <li>
+      105                  <a class="dropdown-item" href="{{ path('mercre
+           di_admin_checkup_index') }}">Checkup</a>
+      106              </li>
+      107 +            <li>                                              
+      108 +                <a class="dropdown-item" href="{{ path('mercre
+          +di_admin_mail_debug') }}">Diagnostic des mails</a>            
+      109 +            </li>                                             
+      110          </ul>
+      111      </li>
+      112  {% endif %}
+
+● Templates are valid and the routes exist. Now tests. Checking whether the test
+  environment has a database, which is needed to log in as an admin:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● There's no test database, so I can't log in as an admin in a test. I'll test
+  the MailDebugger service directly with a mocked organisation repository, and
+  check over HTTP that the page is protected.
+
+● Bash(grep -n "function getOrganisation" -A6 src/AcMarche/Mercredi/src/Organisa
+      tion/Repository/OrganisationRepository.php; grep -n "public
+      \$email_from\|email_from" s…)
+  ⎿  25:    public function getOrganisation(): ?Organisation
+     26-    {
+     27-        return $this
+     … +31 lines (ctrl+o to expand)
+  ⎿  Created tests/Controller/MailDebugControllerTest.php (+25 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Controller;                                
+       4 +                                                               
+       5 +use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;           
+       6 +                                                               
+       7 +final class MailDebugControllerTest extends WebTestCase        
+       8 +{                                                              
+       9 +    public function testPageRequiresLogin(): void              
+      10 +    {                                                          
+      11 +        $client = static::createClient();                      
+      12 +        $client->request('GET', '/admin/mail-debug/');         
+      13 +                                                               
+      14 +        self::assertResponseRedirects();                       
+      15 +        self::assertStringContainsString('/login', $client->get
+         +Response()->headers->get('Location'));                         
+      16 +    }                                                          
+      17 +                                                               
+      18 +    public function testConsumeOnlyAcceptsPost(): void         
+      19 +    {                                                          
+      20 +        $client = static::createClient();                      
+      21 +        $client->request('GET', '/admin/mail-debug/consume');  
+      22 +                                                               
+      23 +        self::assertResponseStatusCodeSame(405);               
+      24 +    }                                                          
+      25 +}                                                              
+  ⎿  Created tests/Mailer/MailDebuggerTest.php (+60 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Mailer;                                    
+       4 +                                                               
+       5 +use AcMarche\Mercredi\Entity\Organisation;                     
+       6 +use AcMarche\Mercredi\Mailer\Debug\MailDebugger;               
+       7 +use AcMarche\Mercredi\Organisation\Repository\OrganisationRepos
+         +itory;                                                         
+       8 +use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;        
+       9 +                                                               
+      10 +final class MailDebuggerTest extends KernelTestCase            
+      11 +{                                                              
+      12 +    private MailDebugger $debugger;                            
+      13 +                                                               
+      14 +    protected function setUp(): void                           
+      15 +    {                                                          
+      16 +        self::bootKernel();                                    
+      17 +        $organisation = new Organisation();                    
+      18 +        $organisation->email_from = 'factures@example.com';    
+      19 +        $repository = $this->createStub(OrganisationRepository:
+         +:class);                                                       
+      20 +        $repository->method('getOrganisation')->willReturn($org
+         +anisation);                                                    
+      21 +        self::getContainer()->set(OrganisationRepository::class
+         +, $repository);                                                
+      22 +                                                               
+      23 +        $this->debugger = self::getContainer()->get(MailDebugge
+         +r::class);                                                     
+      24 +    }                                                          
+      25 +                                                               
+      26 +    public function testShowsConfigurationWithoutPassword(): vo
+         +id                                                             
+      27 +    {                                                          
+      28 +        self::assertSame('factures@example.com', $this->debugge
+         +r->senderAddress());                                           
+      29 +        self::assertSame(['async'], $this->debugger->mailRoutin
+         +g());                                                          
+      30 +        self::assertStringNotContainsString('secret', $this->de
+         +bugger->maskedDsn());                                          
+      31 +    }                                                          
+      32 +                                                               
+      33 +    public function testMasksThePasswordOfTheDsn(): void       
+      34 +    {                                                          
+      35 +        $debugger = new \ReflectionClass(MailDebugger::class); 
+      36 +        $instance = $debugger->newInstanceWithoutConstructor();
+      37 +        $debugger->getProperty('mailerDsn')->setValue($instance
+         +, 'smtp://user%40x.be:secret@ssl0.ovh.net:465');               
+      38 +                                                               
+      39 +        self::assertSame('smtp://user%40x.be:****@ssl0.ovh.net:
+         +465', $instance->maskedDsn());                                 
+      40 +    }                                                          
+     … 20 more lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● OrganisationRepository is final and can't be mocked, and the trait hits the
+  database at construction, so I'm making the organisation lookup lazy. 
+  · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'll keep the trait but override its setter so it doesn't query on
+  construction. The organisation is then loaded only when it's needed:
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php';
+      s=open(p).read()…)
+  ⎿  OK (6 tests, 10 assertions)
+  ⎿  Updated src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php (+23 
+     -0)
+      2  
+      3  namespace AcMarche\Mercredi\Mailer\Debug;
+      4  
+      5 +use AcMarche\Mercredi\Organisation\Repository\OrganisationReposi
+        +tory;                                                           
+      6  use AcMarche\Mercredi\Organisation\Traits\OrganisationPropertyIn
+         itTrait;
+      7  use Symfony\Bundle\FrameworkBundle\Console\Application;
+      8  use Symfony\Component\Console\Input\ArrayInput;
+     ...
+      23  use Symfony\Component\Messenger\Transport\TransportInterface as
+           MessengerTransportInterface;
+      24  use Symfony\Component\Mime\Address;
+      25  use Symfony\Component\Mime\Email;
+      26 +use Symfony\Contracts\Service\Attribute\Required;              
+      27  
+      28  /**
+      29   * Helps to find out why a mail does not arrive: shows the mail
+          er configuration, the
+     ...
+      57          return preg_replace('#(://[^:/@]*:)[^@]*@#', '$1****@',
+           $this->mailerDsn) ?? '';
+      58      }
+      59  
+      60 +    /**                                                        
+      61 +     * Unlike the trait, does not query the organisation when t
+         +he service is built:                                           
+      62 +     * it is loaded on first use, so the page still opens when 
+         +the database fails.                                            
+      63 +     */                                                        
+      64 +    #[Required]                                                
+      65 +    public function setorganisationRepository(OrganisationRepos
+         +itory $organisationRepository): void                           
+      66 +    {                                                          
+      67 +        $this->organisationRepository = $organisationRepository
+         +;                                                              
+      68 +    }                                                          
+      69 +                                                               
+      70      public function senderAddress(): string
+      71      {
+      72 +        $this->loadOrganisation();                             
+      73 +                                                               
+      74          return $this->getEmailSenderAddress();
+      75      }
+      76  
+      77      public function contactAddress(): string
+      78      {
+      79 +        $this->loadOrganisation();                             
+      80 +                                                               
+      81          return $this->getEmailContact();
+      82      }
+     … 11 more lines (ctrl+o to expand)
+  ⎿  Updated tests/Mailer/MailDebuggerTest.php (+1 -10)
+       2  
+       3  namespace App\Tests\Mailer;
+       4  
+       5 -use AcMarche\Mercredi\Entity\Organisation;                     
+       5  use AcMarche\Mercredi\Mailer\Debug\MailDebugger;
+       7 -use AcMarche\Mercredi\Organisation\Repository\OrganisationRepos
+         -itory;                                                         
+       6  use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+       7  
+       8  final class MailDebuggerTest extends KernelTestCase
+     ...
+      12      protected function setUp(): void
+      13      {
+      14          self::bootKernel();
+      17 -        $organisation = new Organisation();                    
+      18 -        $organisation->email_from = 'factures@example.com';    
+      19 -        $repository = $this->createStub(OrganisationRepository:
+         -:class);                                                       
+      20 -        $repository->method('getOrganisation')->willReturn($org
+         -anisation);                                                    
+      21 -        self::getContainer()->set(OrganisationRepository::class
+         -, $repository);                                                
+      22 -                                                               
+      15          $this->debugger = self::getContainer()->get(MailDebugge
+          r::class);
+      16      }
+      17  
+      26 -    public function testShowsConfigurationWithoutPassword(): vo
+         -id                                                             
+      18 +    public function testReportsThatMailsGoThroughTheAsyncQueue(
+         +): void                                                        
+      19      {
+      28 -        self::assertSame('factures@example.com', $this->debugge
+         -r->senderAddress());                                           
+      20          self::assertSame(['async'], $this->debugger->mailRoutin
+          g());
+      21          self::assertStringNotContainsString('secret', $this->de
+          bugger->maskedDsn());
+      22      }
+
+● All 6 pass. One test only works because there's no test database, so I'll make
+  it independent of that. Then the full suite, plus a check that the template
+  renders against the real dev database:
+
+● Bash(python3 - <<'EOF'
+      p='tests/Mailer/MailDebuggerTest.php'; s=open(p).read()…)
+  ⎿  OK (22 tests, 244 assertions)
+     dbal:run-sql [--connection CONNECTION] [--depth DEPTH] [--force-fetch]
+      [--] <sql>
+  ⎿  Updated tests/Mailer/MailDebuggerTest.php (+7 -4)
+      40          self::assertNull($result['error']);
+      41      }
+      42  
+      43 -    public function testUnreadableQueueIsReportedNotThrown(): v
+         -oid                                                            
+      43 +    public function testQueueNeverThrows(): void               
+      44      {
+      45 -        // No database in the test environment: the error must 
+         -be shown, not crash the page                                   
+      45 +        // Without a database the error is returned so the page
+         + can show it                                                   
+      46          $queue = $this->debugger->queue('async');
+      47  
+      48 -        self::assertNotNull($queue['error']);                  
+      49 -        self::assertSame([], $queue['messages']);              
+      48 +        self::assertArrayHasKey('error', $queue);              
+      49 +        self::assertIsArray($queue['messages']);               
+      50 +        if (null === $queue['error']) {                        
+      51 +            self::assertIsInt($queue['count']);                
+      52 +        }                                                      
+      53      }
+      54  }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I added a diagnostic page at /admin/mail-debug/, linked as "Diagnostic des
+  mails" under Paramètres.... It isn't tested in a browser: there's no database
+  locally or in tests, so I couldn't log in as an admin. The 22 tests pass, the
+  prod container is valid and the templates have no syntax errors.
+
+  Probable cause: I haven't confirmed it on the server, but the code points to
+  one cause. The single-invoice form sends through the notifier, and
+  config/packages/messenger.yaml routes those mails to the async queue, which is
+  a database table. Nothing sends what's in that queue on OVH, because the
+  /cron/launch consumer was removed earlier. So the app reports success and the
+  mail just waits. The batch cron isn't affected, because it sends straight over
+  SMTP.
+
+  The page shows:
+  - Configuration: the SMTP server (MAILER_DSN, password hidden), the sender
+    address used for invoices, and whether the app sends mails right away or
+    puts them in a queue.
+  - Mails en attente (async): how many mails are waiting, with subject, sender,
+    recipient and number of tries. A "Traiter la file maintenant" button sends
+    up to 20 of them, in up to 50 seconds, and shows the output.
+  - Mails en échec (failed): mails that failed after 3 tries, with the last
+    error.
+  - Test mail: you can send it directly over SMTP, which shows the full
+    conversation with the server (useful if OVH rejects the sender
+    titi@visitmarche.be), or the way the app does, to see that it gets queued.
+
+  Code: the logic is in src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php.
+  The controller is Controller/Admin/MailDebugController.php and the template
+  is admin/mail_debug/index.html.twig. Tests are in
+  tests/Mailer/MailDebuggerTest.php and
+  tests/Controller/MailDebugControllerTest.php.
+
+  Next step: deploy, open the page, and look at the "Mails en attente" count. If
+  invoices are waiting there, that confirms the cause. There are two ways to
+  fix it:
+  1. Send mails right away (my recommendation for shared hosting): remove the
+     SendEmailMessage: async line from messenger.yaml. If sending fails, the
+     admin gets an error on the spot instead of the mail being lost silently.
+  2. Keep the queue and add an OVH scheduled task that runs messenger:consume 
+     async --time-limit=50.
+
+  Nothing is committed yet. Should I apply option 1?
+
+✻ Worked for 3m 33s · done 2:38 PM
+
+❯ to send mail on ovh there is a limit by our between 100 or 200. so option 2   
+  it is maybe better                                                            
+
+● Option 2 works with that limit. Messenger can apply a rate limiter to the
+  async queue, so the worker never sends more than N mails per hour. I want the
+  invoice cron to use the same limit, since it sends over SMTP directly;
+  otherwise the two together could go over OVH's limit. Checking what's
+  installed and how Messenger applies its limiter:
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The worker calls create() without a key. If the invoice cron does the same,
+  both share one counter. Looking at the existing limiter config:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I'm adding a rate limiter to the mailer (100 mails/hour by default, adjustable
+  via MAILER_HOURLY_LIMIT once you know OVH's exact limit), sharing one counter
+  across the async queue and the invoice cron, plus a cron script and a debug
+  page showing remaining mails. · summary
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/config/packages/rate_limiter.php';
+      s=open(p).read()…)
+  ⎿        values that are compatible with their type declarations.
+
+
+        #[Target('mailer')] → limiter.mailer
+  ⎿  Updated src/AcMarche/Mercredi/config/packages/rate_limiter.php (+7 -0)
+      10                  'limit' => 30,
+      11                  'interval' => '60 minutes',
+      12              ],
+      13 +            // OVH shared hosting accepts a limited number of m
+         +ails per hour: shared by the                                   
+      14 +            // Messenger worker (async transport) and the invoi
+         +ce cron, which sends over SMTP                                 
+      15 +            'mailer' => [                                      
+      16 +                'policy' => 'fixed_window',                    
+      17 +                'limit' => '%env(int:MAILER_HOURLY_LIMIT)%',   
+      18 +                'interval' => '60 minutes',                    
+      19 +            ],                                                 
+      20          ],
+      21      ]);
+      22  };
+  ⎿  Updated config/packages/messenger.yaml (+2 -0)
+       9                  retry_strategy:
+      10                      max_retries: 3
+      11                      multiplier: 2
+      12 +                # Stay under the hosting's hourly mail limit (s
+         +ee rate_limiter.php)                                           
+      13 +                rate_limiter: mailer                           
+      14              failed: 'doctrine://default?queue_name=failed'
+      15              # sync: 'sync://'
+      16  
+  ⎿  Updated .env (+2 -0)
+      45  
+      46  ###> symfony/mailer ###
+      47  MAILER_DSN=null://null
+      48 +# Maximum mails sent per hour (OVH shared hosting limit)       
+      49 +MAILER_HOURLY_LIMIT=100                                        
+      50  ###< symfony/mailer ###
+      51  
+      52  ###> knplabs/knp-snappy-bundle ###
+
+● The config is accepted. Now the invoice cron: each invoice uses up one mail
+  from the hourly quota, and the run stops when the quota is used up. The rest
+  go out on the next run.
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/src/Facture/Handler/FactureCronHandler.php';
+      s=open(p).read()…)
+  ⎿              }
+
+                 $messageBase = $this->factureEmailFactory->messageFacture(
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated
+     src/AcMarche/Mercredi/src/Facture/Handler/FactureCronHandler.php (+12 
+     -0)
+       9  use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
+      10  use AcMarche\Mercredi\Tuteur\Utils\TuteurUtils;
+      11  use Carbon\Carbon;
+      12 +use Symfony\Component\DependencyInjection\Attribute\Target;    
+      13  use Symfony\Component\Mailer\Exception\TransportExceptionInterf
+          ace;
+      14  use Symfony\Component\Mailer\Transport\TransportInterface;
+      15 +use Symfony\Component\RateLimiter\RateLimiterFactoryInterface; 
+      16  
+      17  class FactureCronHandler
+      18  {
+     ...
+      23          private FactureFactory $factureFactory,
+      24          private AdminEmailFactory $adminEmailFactory,
+      25          private TransportInterface $transport,
+      26 +        #[Target('mailer')]                                    
+      27 +        private RateLimiterFactoryInterface $mailerLimiter,    
+      28      ) {
+      29      }
+      30  
+     ...
+      65              );
+      66              $i = 0;
+      67              foreach ($factures as $facture) {
+      68 +                // Same hourly quota as the Messenger worker: t
+         +he rest goes on the next run                                   
+      69 +                if (!$this->mailerLimiter->create()->consume()-
+         +>isAccepted()) {                                               
+      70 +                    $result[] = ['message' => 'count '.$i];    
+      71 +                    $result[] = ['message' => 'Limite horaire d
+         +\'envoi de mails atteinte, suite au prochain passage'];        
+      72 +                                                               
+      73 +                    return $result;                            
+      74 +                }                                              
+      75 +                                                               
+      76                  $messageFacture = clone $messageBase; //sinon a
+          ttachs multiple
+      77  
+      78                  try {
+
+● A token is used up even when the invoice is skipped (no PDF, no email
+  address). I'll move the check to just before the actual SMTP send.
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/src/Facture/Handler/FactureCronHandler.php';
+      s=open(p).read()…)
+  ⎿                  } catch (\Exception $e) {
+                         $error = 'Pas de pièce jointe pour la facture: '.$
+     facture->getId().' '.$e->getMessage();
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated
+     src/AcMarche/Mercredi/src/Facture/Handler/FactureCronHandler.php (+8 
+     -8)
+      65              );
+      66              $i = 0;
+      67              foreach ($factures as $facture) {
+      68 -                // Same hourly quota as the Messenger worker: t
+         -he rest goes on the next run                                   
+      69 -                if (!$this->mailerLimiter->create()->consume()-
+         ->isAccepted()) {                                               
+      70 -                    $result[] = ['message' => 'count '.$i];    
+      71 -                    $result[] = ['message' => 'Limite horaire d
+         -\'envoi de mails atteinte, suite au prochain passage'];        
+      72 -                                                               
+      73 -                    return $result;                            
+      74 -                }                                              
+      75 -                                                               
+      68                  $messageFacture = clone $messageBase; //sinon a
+          ttachs multiple
+      69  
+      70                  try {
+     ...
+       97                      continue;
+       98                  }
+       99  
+      100 +                // Same hourly quota as the Messenger worker: 
+          +the rest goes on the next run                                 
+      101 +                if (!$this->mailerLimiter->create()->consume()
+          +->isAccepted()) {                                             
+      102 +                    $result[] = ['message' => 'count '.$i];   
+      103 +                    $result[] = ['message' => 'Limite horaire 
+          +d\'envoi de mails atteinte, suite au prochain passage'];      
+      104 +                                                              
+      105 +                    return $result;                           
+      106 +                }                                             
+      107 +                                                              
+      108                  try {
+      109                      // Envoi direct par le transport : pas de 
+           file Messenger, la facture
+      110                      // n'est marquée envoyée que si le serveur
+            SMTP a accepté le mail
+
+● Now the OVH wrapper script for the worker, modelled on bin/cron-facture.php:
+
+● Bash(cat > bin/cron-messenger.php <<'EOF'
+      <?php…)
+  ⎿  No syntax errors detected in bin/cron-messenger.php
+  ⎿  Created bin/cron-messenger.php (+31 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +/**                                                            
+       4 + * Point d'entrée pour les « Tâches planifiées (CRON) » d'OVH m
+         +utualisé, qui                                                  
+       5 + * exécutent un fichier PHP sans arguments. Traite la file Mess
+         +enger « async »                                                
+       6 + * (mails de l'application) pendant 55 minutes, au rythme permi
+         +s par le                                                       
+       7 + * limiteur « mailer » (MAILER_HOURLY_LIMIT mails par heure).  
+       8 + */                                                            
+       9 +                                                               
+      10 +use App\Kernel;                                                
+      11 +use Symfony\Bundle\FrameworkBundle\Console\Application;        
+      12 +use Symfony\Component\Console\Input\ArrayInput;                
+      13 +use Symfony\Component\Console\Output\ConsoleOutput;            
+      14 +use Symfony\Component\Dotenv\Dotenv;                           
+      15 +                                                               
+      16 +require dirname(__DIR__).'/vendor/autoload.php';               
+      17 +                                                               
+      18 +(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');             
+      19 +                                                               
+      20 +$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_
+         +DEBUG']);                                                      
+      21 +                                                               
+      22 +$application = new Application($kernel);                       
+      23 +$application->setAutoExit(false);                              
+      24 +                                                               
+      25 +exit($application->run(new ArrayInput([                        
+      26 +    'command' => 'messenger:consume',                          
+      27 +    'receivers' => ['async'],                                  
+      28 +    // Lancé chaque heure : s'arrête avant le passage suivant  
+      29 +    '--time-limit' => 3300,                                    
+      30 +    '--memory-limit' => '128M',                                
+      31 +]), new ConsoleOutput()));                                     
+
+● Now the debug page: show the remaining quota, and make the button and the
+  direct test mail count against it. Otherwise the worker could block a web
+  request while it waits for the next hour.
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php';
+      s=open(p).read()…)
+  ⎿  70:                            compteur remis à zéro à {{ quota.resetA
+     t|date('H:i') }}
+     48:    public function getRetryAfter(): \DateTimeImmutable
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php (+31 
+     -1)
+       8  use Symfony\Component\Console\Input\ArrayInput;
+       9  use Symfony\Component\Console\Output\BufferedOutput;
+      10  use Symfony\Component\DependencyInjection\Attribute\Autowire;
+      11 +use Symfony\Component\DependencyInjection\Attribute\Target;    
+      12  use Symfony\Component\HttpKernel\KernelInterface;
+      13  use Symfony\Component\Mailer\Exception\TransportExceptionInterf
+          ace;
+      14  use Symfony\Component\Mailer\MailerInterface;
+     ...
+      24  use Symfony\Component\Messenger\Transport\TransportInterface as
+           MessengerTransportInterface;
+      25  use Symfony\Component\Mime\Address;
+      26  use Symfony\Component\Mime\Email;
+      27 +use Symfony\Component\RateLimiter\RateLimiterFactoryInterface; 
+      28  use Symfony\Contracts\Service\Attribute\Required;
+      29  
+      30  /**
+     ...
+      48          #[Autowire(service: 'messenger.transport.failed')]
+      49          private readonly MessengerTransportInterface $failedTra
+          nsport,
+      50          private readonly KernelInterface $kernel,
+      51 +        #[Target('mailer')]                                    
+      52 +        private readonly RateLimiterFactoryInterface $mailerLim
+         +iter,                                                          
+      53      ) {
+      54      }
+      55  
+     ...
+      105      }
+      106  
+      107      /**
+      108 +     * Mails still allowed in the current hour (shared by the 
+          +worker and the invoice cron).                                 
+      109 +     *                                                        
+      110 +     * @return array{remaining: int, limit: int, resetAt: \Dat
+          +eTimeImmutable}                                               
+      111 +     */                                                       
+      112 +    public function hourlyQuota(): array                      
+      113 +    {                                                         
+      114 +        $rateLimit = $this->mailerLimiter->create()->consume(0
+          +);                                                            
+      115 +                                                              
+      116 +        return [                                              
+      117 +            'remaining' => $rateLimit->getRemainingTokens(),  
+      118 +            'limit' => $rateLimit->getLimit(),                
+      119 +            'resetAt' => $rateLimit->getRetryAfter(),         
+      120 +        ];                                                    
+      121 +    }                                                         
+      122 +                                                              
+     … 31 more lines (ctrl+o to expand)
+  ⎿  Updated
+     src/AcMarche/Mercredi/src/Controller/Admin/MailDebugController.php (+1
+     -0)
+      76              'sender' => $this->mailDebugger->senderAddress(),
+      77              'contact' => $this->mailDebugger->contactAddress(),
+      78              'routing' => $this->mailDebugger->mailRouting(),
+      79 +            'quota' => $this->mailDebugger->hourlyQuota(),     
+      80              'asyncQueue' => $this->mailDebugger->queue('async')
+          ,
+      81              'failedQueue' => $this->mailDebugger->queue('failed
+          '),
+      82          ];
+  ⎿  Updated
+     src/AcMarche/Mercredi/templates/admin/mail_debug/index.html.twig (+10 
+     -0)
+      63                      <td>{{ contact }}</td>
+      64                  </tr>
+      65                  <tr>
+      66 +                    <th>Mails restants cette heure</th>        
+      67 +                    <td>                                       
+      68 +                        <span class="badge bg-{{ quota.remainin
+         +g > 0 ? 'success' : 'danger' }}">{{ quota.remaining }} / {{ quo
+         +ta.limit }}</span>                                             
+      69 +                        {% if quota.remaining < quota.limit %} 
+      70 +                            compteur remis à zéro à {{ quota.re
+         +setAt|date('H:i') }}                                           
+      71 +                        {% endif %}                            
+      72 +                        <br><small class="text-muted">Partagé p
+         +ar la file de mails et l'envoi planifié des factures (MAILER_HO
+         +URLY_LIMIT).</small>                                           
+      73 +                    </td>                                      
+      74 +                </tr>                                          
+      75 +                <tr>                                           
+      76                      <th>Envoi par l'application</th>
+      77                      <td>
+      78                          {% if routing is empty %}
+
+● With a fixed window, consume(0) returns "now" as the retry time rather than
+  the reset time, so that "remis à zéro" text would be wrong. Removing it:
+
+● Bash(python3 - <<'EOF'
+      p='src/AcMarche/Mercredi/templates/admin/mail_debug/index.html.twig';
+      s=open(p).read()…)
+  ⎿   [OK] All 1 Twig files contain valid syntax.
+
+      [OK] The container was linted successfully: all services are injected
+      with
+  ⎿  Updated
+     src/AcMarche/Mercredi/templates/admin/mail_debug/index.html.twig (+0 
+     -3)
+      66                      <th>Mails restants cette heure</th>
+      67                      <td>
+      68                          <span class="badge bg-{{ quota.remainin
+          g > 0 ? 'success' : 'danger' }}">{{ quota.remaining }} / {{ quo
+          ta.limit }}</span>
+      69 -                        {% if quota.remaining < quota.limit %} 
+      70 -                            compteur remis à zéro à {{ quota.re
+         -setAt|date('H:i') }}                                           
+      71 -                        {% endif %}                            
+      69                          <br><small class="text-muted">Partagé p
+          ar la file de mails et l'envoi planifié des factures (MAILER_HO
+          URLY_LIMIT).</small>
+      70                      </td>
+      71                  </tr>
+  ⎿  Updated src/AcMarche/Mercredi/src/Mailer/Debug/MailDebugger.php (+1 
+     -2)
+      107      /**
+      108       * Mails still allowed in the current hour (shared by the 
+           worker and the invoice cron).
+      109       *
+      110 -     * @return array{remaining: int, limit: int, resetAt: \Dat
+          -eTimeImmutable}                                               
+      110 +     * @return array{remaining: int, limit: int}              
+      111       */
+      112      public function hourlyQuota(): array
+      113      {
+     ...
+      116          return [
+      117              'remaining' => $rateLimit->getRemainingTokens(),
+      118              'limit' => $rateLimit->getLimit(),
+      119 -            'resetAt' => $rateLimit->getRetryAfter(),         
+      119          ];
+      120      }
+      121  
+
+● Adding tests: the async queue is rate-limited, the quota reads 100 by default,
+  and the button refuses to run once the quota is used up.
+
+● Bash(python3 - <<'EOF'
+      p='tests/Mailer/MailDebuggerTest.php'; s=open(p).read()…)
+  ⎿  OK (26 tests, 249 assertions)
+  ⎿  Updated tests/Mailer/MailDebuggerTest.php (+39 -0)
+       4  
+       5  use AcMarche\Mercredi\Mailer\Debug\MailDebugger;
+       6  use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+       7 +use Symfony\Component\RateLimiter\RateLimiterFactoryInterface; 
+       8  
+       9  final class MailDebuggerTest extends KernelTestCase
+      10  {
+     ...
+      14      {
+      15          self::bootKernel();
+      16          $this->debugger = self::getContainer()->get(MailDebugge
+          r::class);
+      17 +        $this->mailerLimiter()->create()->reset();             
+      18      }
+      19  
+      20 +    protected function tearDown(): void                        
+      21 +    {                                                          
+      22 +        $this->mailerLimiter()->create()->reset();             
+      23 +        parent::tearDown();                                    
+      24 +    }                                                          
+      25 +                                                               
+      26 +    public function testTheAsyncQueueIsRateLimited(): void     
+      27 +    {                                                          
+      28 +        self::assertTrue(self::getContainer()->get('messenger.r
+         +ate_limiter_locator')->has('async'));                          
+      29 +    }                                                          
+      30 +                                                               
+      31 +    public function testHourlyQuotaDefaultsTo100(): void       
+      32 +    {                                                          
+      33 +        self::assertSame(['remaining' => 100, 'limit' => 100], 
+         +$this->debugger->hourlyQuota());                               
+      34 +    }                                                          
+      35 +                                                               
+      36 +    public function testDirectSendUsesTheQuota(): void         
+      37 +    {                                                          
+      38 +        $this->debugger->sendDirect($this->debugger->createTest
+         +Email('a@example.com', 'b@example.com', 'Test'));              
+      39 +                                                               
+      40 +        self::assertSame(99, $this->debugger->hourlyQuota()['re
+         +maining']);                                                    
+      41 +    }                                                          
+      42 +                                                               
+      43 +    public function testQueueIsNotProcessedWhenTheQuotaIsUsedUp
+         +(): void                                                       
+      44 +    {                                                          
+      45 +        $this->mailerLimiter()->create()->consume(100);        
+      46 +                                                               
+     … 13 more lines (ctrl+o to expand)
+
+● All 26 tests pass. Last step: document the new OVH scheduled task in
+  DEPLOY.md.
+
+● Bash(python3 - <<'EOF'
+      p='DEPLOY.md'; s=open(p).read()…)
+  ⎿   M .env
+      M DEPLOY.md
+      M config/packages/messenger.yaml
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+29 -1)
+      118    processed at most once every 60 minutes; it is marked done w
+           hen no invoice is
+      119    left to send.
+      120  - Invoices, admin alerts and the run report are sent directly 
+           over SMTP, not
+      121 -  through the Messenger queue.                                
+      121 +  through the Messenger queue. Invoices count against the hour
+          +ly mail quota                                                 
+      122 +  (see section 9).                                            
+      123  - A lock (`symfony/lock`) makes a run exit immediately if anot
+           her one is still
+      124    in progress.
+      125  
+     ...
+      133  The output of each scheduled run is in the OVH cron logs (host
+           ing → **More** →
+      134  **Logs**), and the report is mailed after each run that did so
+           mething.
+      135  
+      136 +## 9. Mail queue worker (once)                                
+      137 +                                                              
+      138 +Mails sent by the application (an invoice sent from the admin,
+          + account mails,                                               
+      139 +notifications...) are put in the Messenger `async` queue (data
+          +base table                                                    
+      140 +`messenger_messages`). They only leave when the queue is proce
+          +ssed, so a                                                    
+      141 +scheduled task must run the worker.                           
+      142 +                                                              
+      143 +In the OVH control panel, add a second scheduled task, like th
+          +e invoice one:                                                
+      144 +                                                              
+      145 +- Command to execute: path of `bin/cron-messenger.php` relativ
+          +e to the hosting                                              
+      146 +  root (for example `www/bin/cron-messenger.php`)             
+      147 +- Language: the PHP version of the project (8.5)              
+      148 +- Frequency: every hour, every day                            
+      149 +                                                              
+      150 +The script runs `messenger:consume async` for 55 minutes, so m
+          +ails leave within                                             
+      151 +seconds while it runs.                                        
+      152 +                                                              
+      153 +OVH shared hosting accepts a limited number of mails per hour.
+          + The `mailer` rate                                            
+      154 +limiter caps sending at `MAILER_HOURLY_LIMIT` mails per hour (
+          +100 by default, set                                           
+      155 +it in `.env.local`). The worker and the invoice cron share thi
+          +s quota: when it is                                           
+      156 +used up, the worker waits and the invoice cron stops and conti
+          +nues on its next                                              
+      157 +run.                                                          
+      158 +                                                              
+      159 +The page **Paramètres → Diagnostic des mails** (`/admin/mail-d
+          +ebug/`) shows the                                             
+      160 +mails waiting or failed, the quota left this hour, sends a tes
+          +t mail with the                                               
+      161 +SMTP conversation, and can process the queue by hand.         
+      162 +                                                              
+      163  ## Routine deployment (after the first one)
+     … 2 more lines (ctrl+o to expand)
+
+● Mails will now be sent from the queue by an hourly OVH scheduled task, capped
+  at 100 mails per hour by default. Tests pass (26) and the prod config is
+  valid. I couldn't test any of it on OVH from here.
+
+  What changed
+  - Hourly limit: a new mailer limiter in
+    src/AcMarche/Mercredi/config/packages/rate_limiter.php, set by
+    MAILER_HOURLY_LIMIT (100 in .env). Once you know OVH's real limit, set it in
+    .env.local on the server; no deploy needed.
+  - Queue: the async queue uses that limiter (config/packages/messenger.yaml).
+    When the hour's quota is used up, the worker waits instead of going over.
+  - Invoice cron: FactureCronHandler uses the same counter just before each SMTP
+    send. When the quota is used up, the run stops, and the remaining invoices
+    stay unsent and go out on the next run.
+  - bin/cron-messenger.php: the script for the OVH scheduled task. It runs
+    messenger:consume async for 55 minutes, so while it's running, mails leave
+    within seconds.
+  - Debug page: now shows "Mails restants cette heure", for example 87 / 100.
+    The test mail and the "Traiter la file" button count against the quota, and
+    the button never processes more than what's left.
+  - DEPLOY.md: new section 9 explains how to set up the task.
+
+  On OVH
+  1. Deploy and clear the cache.
+  2. Add a scheduled task: www/bin/cron-messenger.php, PHP 8.5, every hour.
+  3. Open "Diagnostic des mails". The invoices that are already waiting should
+     go out on the next run. You can also send them right away with the button.
+
+  Good to know
+  - If the quota runs out during a run, the worker waits for the next hour and
+    can go past 60 minutes, so two workers may briefly run at once. That's
+    harmless: the queue doesn't give the same mail to two workers. If OVH kills
+    the task while it's waiting, the mail it had picked up is sent again after
+    one hour; it isn't lost.
+  - The limit only counts what this app sends. If other sites or scripts on the
+    same OVH account also send mail, lower MAILER_HOURLY_LIMIT.
+
+  Nothing is committed yet.
+
+✻ Baked for 2m 10s · done 2:50 PM
