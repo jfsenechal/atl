@@ -11,7 +11,6 @@ use AcMarche\Mercredi\Facture\Form\FactureSendType;
 use AcMarche\Mercredi\Facture\Repository\FactureCronRepository;
 use AcMarche\Mercredi\Facture\Repository\FactureRepository;
 use AcMarche\Mercredi\Mailer\Factory\FactureEmailFactory;
-use AcMarche\Mercredi\Parameter\Option;
 use DateTime;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -36,7 +35,8 @@ final class FactureSendController extends AbstractController
         #[Target('mailer')]
         private RateLimiterFactoryInterface $mailerLimiter,
         private LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     #[Route(path: '/select/month', name: 'mercredi_admin_facture_send_select_month', methods: ['GET', 'POST'])]
     public function selectMonth(Request $request): Response
@@ -170,13 +170,10 @@ final class FactureSendController extends AbstractController
     #[Route(path: '/all/cron/{id}', name: 'mercredi_admin_facture_cron_launch', methods: ['GET'])]
     public function cronLaunch(FactureCron $factureCron): Response
     {
-        $copies = $this->getParameter(Option::EMAILS_FACTURE);
-
         return $this->render(
             '@AcMarcheMercrediAdmin/facture/facture_cron_launch.html.twig',
             [
                 'factureCron' => $factureCron,
-                'copies' => $copies,
             ],
         );
     }

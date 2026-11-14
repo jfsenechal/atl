@@ -1,19 +1,14 @@
 <?php
 
 use AcMarche\Mercredi\Namer\DirectoryNamer;
-use AcMarche\Mercredi\Parameter\Option;
 use AcMarche\Mercredi\Security\Token\TokenManager;
 use AcMarche\Mercredi\ServiceIterator\AfterUserRegistration;
 use AcMarche\Mercredi\ServiceIterator\Register;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 return static function (ContainerConfigurator $containerConfigurator): void {
-    $parameters = $containerConfigurator->parameters();
-
-    $parameters->set(Option::EMAILS_FACTURE, '%env(MERCREDI_EMAILS_FACTURE)%');
 
     $services = $containerConfigurator->services();
 
