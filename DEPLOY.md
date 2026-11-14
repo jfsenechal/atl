@@ -134,15 +134,24 @@ The output of each scheduled run is in the OVH cron logs (hosting â†’ **More** â
 **Logs**), and the report is mailed after each run that did something.
 
 Both cron scripts (`bin/cron-facture.php`, `bin/cron-messenger.php`) go through
-`bin/cron-bootstrap.php`, which prints a START line (PHP version, `APP_ENV`,
-`memory_limit`, `max_execution_time`), runs the command in verbose mode, prints
-any exception or PHP fatal error with file, line and stack trace, and ends with
-an END line (exit code, duration, peak memory). A one-line summary of every run
-is also appended to `var/log/cron.log`.
+`bin/cron-bootstrap.php`. OVH may run them with the PHP **CGI** binary (no
+`STDOUT` constant, limited `max_execution_time`), so the bootstrap only uses
+explicitly opened streams and calls `set_time_limit(0)`. It writes:
+
+- `var/log/cron.log`: a `START` line as the very first action (with the PHP
+  SAPI, version and limits), then one line per run with exit code, duration,
+  peak memory and the error. A `START` with no line after it means the process
+  was killed (time or memory limit).
+- `var/log/cron-<name>.last.log`: full verbose output of the last run, with
+  exceptions, PHP fatal errors, file, line and stack trace (also printed in the
+  OVH cron logs).
+
+If OVH reports failures but `var/log/cron.log` has no `START` line at that time,
+the script did not even start: check the PHP version selected for the task.
 
 OVH disables a scheduled task after 10 consecutive failed runs (exit code other
-than 0, or too long). Read `var/log/cron.log` or the OVH cron logs, fix the
-cause, run the script once by hand (`php bin/cron-facture.php`), then re-enable
+than 0, or too long). Read these logs, fix the cause, run the script once by
+hand (`php bin/cron-facture.php`), then re-enable
 the task in the OVH control panel.
 
 ## 9. Mail queue worker (once)
