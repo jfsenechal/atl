@@ -25,9 +25,11 @@ use Symfony\Component\Console\Output\StreamOutput;
 use Symfony\Component\Dotenv\Dotenv;
 
 /**
- * @param array<string, mixed> $arguments arguments of the console command, 'command' included
+ * @param array<string, mixed>|\Closure(): array<string, mixed> $arguments arguments of the console command,
+ *                                                               'command' included; a closure is called once
+ *                                                               the .env files are loaded (to read env vars)
  */
-function run_cron(string $name, array $arguments): never
+function run_cron(string $name, array|\Closure $arguments): never
 {
     $projectDir = dirname(__DIR__);
     $logDir = $projectDir.'/var/log';
@@ -115,6 +117,9 @@ function run_cron(string $name, array $arguments): never
     try {
         require $projectDir.'/vendor/autoload.php';
         (new Dotenv())->bootEnv($projectDir.'/.env');
+        if ($arguments instanceof \Closure) {
+            $arguments = $arguments();
+        }
         $line(sprintf('APP_ENV=%s APP_DEBUG=%s command=%s', $_SERVER['APP_ENV'], $_SERVER['APP_DEBUG'] ? '1' : '0', json_encode($arguments)));
 
         $kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);

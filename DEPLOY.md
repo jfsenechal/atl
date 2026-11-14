@@ -114,6 +114,16 @@ Good to know:
 
 - `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.env.local` on the
   server, as for the website.
+- On OVH shared hosting, use `MAILER_DSN=native://default` (PHP `mail()`,
+  relayed by OVH). Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`)
+  are refused ("Connection refused"), and any mail sent from an SSH session is
+  rejected ("User ... is not allowed to submit mail"), so `bin/console
+  mailer:test` over SSH proves nothing. The sender (`MERCREDI_FROM`) must be an
+  address of a domain hosted at OVH.
+- To test mail in real cron conditions, create a temporary task running
+  `bin/cron-mailtest.php`: it sends a test mail from and to `MERCREDI_FROM`.
+  Check `var/log/cron.log` and `var/log/cron-cron-mailtest.last.log` after one
+  run, then delete the task.
 - Each run sends at most 40 invoices per `FactureCron`, and a `FactureCron` is
   processed at most once every 60 minutes; it is marked done when no invoice is
   left to send.
