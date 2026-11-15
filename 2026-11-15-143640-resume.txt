@@ -1,0 +1,712 @@
+ ▐▛███▛█   Claude Code v2.1.325
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   /var/www/atl
+
+
+❯ resume                                                                        
+  15/11/2026 11:36:03 | INFO | #22 {main}                                       
+  15/11/2026 11:36:03 | INFO | #12 /home/visitmp/c3i6yq57j2/vendor/symfony/mess 
+  enger/Middleware/RejectRedeliveredMessageMiddleware.php(40):                  
+  Symfony\Component\Messenger\Middleware\DispatchAfterCurrentBusMiddleware->han 
+  dle(Object(Symfony\Component\Messenger\Envelope),                             
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #19 /home/visitmp/c3i6yq57j2/vendor/monolog/mono 
+  log/src/Monolog/Handler/DeduplicationHandler.php(96):                         
+  Symfony\Bridge\Monolog\Handler\MailerHandler->handleBatch(Array)              
+  15/11/2026 11:36:03 | INFO | ## OVH ## END - 2026-11-15 11:36:03.506454       
+  exitcode: 255                                                                 
+  15/11/2026 11:36:03 | INFO | thrown in /home/visitmp/c3i6yq57j2/vendor/symfon 
+  y/mailer/Transport/Smtp/Stream/ProcessStream.php on line 77                   
+  15/11/2026 11:36:03 | INFO | #18 /home/visitmp/c3i6yq57j2/vendor/symfony/mono 
+  log-bridge/Handler/MailerHandler.php(67):                                     
+  Symfony\Bridge\Monolog\Handler\MailerHandler->send('<h1 style="back...',      
+  Array)                                                                        
+  15/11/2026 11:36:03 | INFO | #13 /home/visitmp/c3i6yq57j2/vendor/symfony/mess 
+  enger/Middleware/AddBusNameStampMiddleware.php(35):                           
+  Symfony\Component\Messenger\Middleware\RejectRedeliveredMessageMiddleware->ha 
+  ndle(Object(Symfony\Component\Messenger\Envelope),                            
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #14 /home/visitmp/c3i6yq57j2/vendor/symfony/mess 
+  enger/Middleware/AddDefaultStampsMiddleware.php(33):                          
+  Symfony\Component\Messenger\Middleware\AddBusNameStampMiddleware->handle(Obje 
+  ct(Symfony\Component\Messenger\Envelope),                                     
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #15                                              
+  /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/MessageBus.php(69):         
+  Symfony\Component\Messenger\Middleware\AddDefaultStampsMiddleware->handle(Obj 
+  ect(Symfony\Component\Messenger\Envelope),                                    
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #21 [internal function]:                         
+  Monolog\Handler\BufferHandler->close()                                        
+  15/11/2026 11:36:03 | INFO | #20 /home/visitmp/c3i6yq57j2/vendor/monolog/mono 
+  log/src/Monolog/Handler/BufferHandler.php(113):                               
+  Monolog\Handler\DeduplicationHandler->flush()                                 
+  15/11/2026 11:36:03 | INFO | #16                                              
+  /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Mailer.php(62):                
+  Symfony\Component\Messenger\MessageBus->dispatch(Object(Symfony\Component\Mai 
+  ler\Messenger\SendEmailMessage), Array)                                       
+  15/11/2026 11:36:03 | INFO | #17                                              
+  /home/visitmp/c3i6yq57j2/vendor/symfony/monolog-bridge/Handler/MailerHandle   
+  ──── (813 lines hidden) ───────────────────────────────────────────────────── 
+  endor/symfony/messenger/Middleware/RejectRedeliveredMessageMiddleware.php(40) 
+  : Symfony\Component\Messenger\Middleware\DispatchAfterCurrentBusMiddleware->h 
+  andle(Object(Symfony\Component\Messenger\Envelope),                           
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #19 /home/visitmp/c3i6yq57j2/vendor/monolog/mono 
+  log/src/Monolog/Handler/DeduplicationHandler.php(96):                         
+  Symfony\Bridge\Monolog\Handler\MailerHandler->handleBatch(Array)              
+  15/11/2026 11:36:03 | INFO | ## OVH ## END - 2026-11-15 11:36:03.506454       
+  exitcode: 255                                                                 
+  15/11/2026 11:36:03 | INFO | thrown in /home/visitmp/c3i6yq57j2/vendor/symfon 
+  y/mailer/Transport/Smtp/Stream/ProcessStream.php on line 77                   
+  15/11/2026 11:36:03 | INFO | #18 /home/visitmp/c3i6yq57j2/vendor/symfony/mono 
+  log-bridge/Handler/MailerHandler.php(67):                                     
+  Symfony\Bridge\Monolog\Handler\MailerHandler->send('<h1 style="back...',      
+  Array)                                                                        
+  15/11/2026 11:36:03 | INFO | #13 /home/visitmp/c3i6yq57j2/vendor/symfony/mess 
+  enger/Middleware/AddBusNameStampMiddleware.php(35):                           
+  Symfony\Component\Messenger\Middleware\RejectRedeliveredMessageMiddleware->ha 
+  ndle(Object(Symfony\Component\Messenger\Envelope),                            
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #14 /home/visitmp/c3i6yq57j2/vendor/symfony/mess 
+  enger/Middleware/AddDefaultStampsMiddleware.php(33):                          
+  Symfony\Component\Messenger\Middleware\AddBusNameStampMiddleware->handle(Obje 
+  ct(Symfony\Component\Messenger\Envelope),                                     
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #15                                              
+  /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/MessageBus.php(69):         
+  Symfony\Component\Messenger\Middleware\AddDefaultStampsMiddleware->handle(Obj 
+  ect(Symfony\Component\Messenger\Envelope),                                    
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  15/11/2026 11:36:03 | INFO | #21 [internal function]:                         
+  Monolog\Handler\BufferHandler->close()                                        
+  15/11/2026 11:36:03 | INFO | #20 /home/visitmp/c3i6yq57j2/vendor/monolog/mono 
+  log/src/Monolog/Handler/BufferHandler.php(113):                               
+  Monolog\Handler\DeduplicationHandler->flush()                                 
+  15/11/2026 11:36:03 | INFO | #16                                              
+  /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Mailer.php(62):                
+  Symfony\Component\Messenger\MessageBus->dispatch(Object(Symfony\Component\Mai 
+  ler\Messenger\SendEmailMessage), Array)                                       
+  15/11/2026 11:36:03 | INFO | #17 /home/visitmp/c3i6yq57j2/vendor/symfony/mono 
+  log-bridge/Handler/MailerHandler.php(84):                                     
+  Symfony\Component\Mailer\Mailer->send(Object(Symfony\Component\Mime\Email))   
+  Waiting for logs...                                                           
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● I'm adding a mailer transport that accepts OVH's "exit code -1" when sendmail
+  printed nothing. I'm also reordering the monolog handlers so a failed error
+  mail can't crash the process.
+
+● Bash(cd /var/www/atl; mkdir -p src/AcMarche/Mercredi/src/Mailer/Transport
+      cat > src/AcMarche/Mercredi/src/Mailer/Transport/OvhSendmailTransport.php
+      <<'EOF'…)
+  ⎿  /usr/sbin/sendmail -t -i
+  ⎿  Created
+     src/AcMarche/Mercredi/src/Mailer/Transport/OvhSendmailTransport.php
+     (+49 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace AcMarche\Mercredi\Mailer\Transport;                  
+       4 +                                                               
+       5 +use Psr\EventDispatcher\EventDispatcherInterface;              
+       6 +use Psr\Log\LoggerInterface;                                   
+       7 +use Symfony\Component\Mailer\Exception\TransportException;     
+       8 +use Symfony\Component\Mailer\SentMessage;                      
+       9 +use Symfony\Component\Mailer\Transport\AbstractTransport;      
+      10 +use Symfony\Component\Mailer\Transport\TransportInterface;     
+      11 +                                                               
+      12 +/**                                                            
+      13 + * Sendmail (PHP sendmail_path) as used on OVH shared hosting. 
+      14 + *                                                             
+      15 + * In OVH scheduled tasks, proc_close() cannot read the exit st
+         +atus of sendmail and                                           
+      16 + * returns -1, although the mail was accepted and delivered. Sy
+         +mfony then throws                                              
+      17 + * "Process failed with exit code -1: " and Messenger retries, 
+         +so the mail is sent                                            
+      18 + * several times. A real refusal also gives -1 but sendmail pri
+         +nts the reason                                                 
+      19 + * ("sendmail: fatal: ..."): only an empty output is treated as
+         + sent.                                                         
+      20 + */                                                            
+      21 +final class OvhSendmailTransport extends AbstractTransport     
+      22 +{                                                              
+      23 +    private const UNKNOWN_STATUS = 'Process failed with exit co
+         +de -1:';                                                       
+      24 +                                                               
+      25 +    public function __construct(                               
+      26 +        private readonly TransportInterface $sendmail,         
+      27 +        ?EventDispatcherInterface $dispatcher = null,          
+      28 +        ?LoggerInterface $logger = null,                       
+      29 +    ) {                                                        
+      30 +        parent::__construct($dispatcher, $logger);             
+      31 +    }                                                          
+      32 +                                                               
+      33 +    public function __toString(): string                       
+      34 +    {                                                          
+      35 +        return 'ovh://'.$this->sendmail;                       
+      36 +    }                                                          
+      37 +                                                               
+      38 +    protected function doSend(SentMessage $message): void      
+      39 +    {                                                          
+      40 +        try {                                                  
+     … 9 more lines (ctrl+o to expand)
+  ⎿  Created src/AcMarche/Mercredi/src/Mailer/Transport/OvhSendmailTranspor
+     tFactory.php (+35 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace AcMarche\Mercredi\Mailer\Transport;                  
+       4 +                                                               
+       5 +use Symfony\Component\DependencyInjection\Attribute\Autoconfigu
+         +reTag;                                                         
+       6 +use Symfony\Component\Mailer\Exception\UnsupportedSchemeExcepti
+         +on;                                                            
+       7 +use Symfony\Component\Mailer\Transport\AbstractTransportFactory
+         +;                                                              
+       8 +use Symfony\Component\Mailer\Transport\Dsn;                    
+       9 +use Symfony\Component\Mailer\Transport\SendmailTransport;      
+      10 +use Symfony\Component\Mailer\Transport\TransportInterface;     
+      11 +                                                               
+      12 +/**                                                            
+      13 + * MAILER_DSN=ovh://default : sendmail_path of php.ini, see Ovh
+         +SendmailTransport.                                             
+      14 + */                                                            
+      15 +#[AutoconfigureTag('mailer.transport_factory')]                
+      16 +final class OvhSendmailTransportFactory extends AbstractTranspo
+         +rtFactory                                                      
+      17 +{                                                              
+      18 +    public function create(Dsn $dsn): TransportInterface       
+      19 +    {                                                          
+      20 +        if (!$this->supports($dsn)) {                          
+      21 +            throw new UnsupportedSchemeException($dsn, 'ovh', $
+         +this->getSupportedSchemes());                                  
+      22 +        }                                                      
+      23 +                                                               
+      24 +        $command = ini_get('sendmail_path') ?: '/usr/sbin/sendm
+         +ail -t -i';                                                    
+      25 +        // Events and logs are handled by the outer transport, 
+         +once per mail                                                  
+      26 +        $sendmail = new SendmailTransport($command);           
+      27 +                                                               
+      28 +        return new OvhSendmailTransport($sendmail, $this->dispa
+         +tcher, $this->logger);                                         
+      29 +    }                                                          
+      30 +                                                               
+      31 +    protected function getSupportedSchemes(): array            
+      32 +    {                                                          
+      33 +        return ['ovh'];                                        
+      34 +    }                                                          
+      35 +}                                                              
+
+● Now the monolog change: in the trace, DeduplicationHandler flushes from its
+  own shutdown function, which bypasses the whatfailuregroup wrapped around it.
+  I'm moving the safety group inside it.
+
+● Bash(cd /var/www/atl; python3 - <<'EOF'
+      p='config/packages/monolog.yaml'…)
+  ⎿  PHPUnit 13.4.7 by Sebastian Bergmann and contributors.
+
+     Runtime:       PHP 8.5.12
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated config/packages/monolog.yaml (+8 -6)
+      42                  buffer_size: 50 # How many messages should be s
+          aved? Prevent memory leaks
+      43              grouped:
+      44                  type: group
+      45 -                members: [ nested, mail_safe ]                 
+      45 +                members: [ nested, deduplicated ]              
+      46 +            # Mail the buffered log to the webmaster when an er
+         +ror occurs (same error mailed once per 60 s)                   
+      47 +            deduplicated:                                      
+      48 +                type: deduplication                            
+      49 +                handler: mail_safe                             
+      50              # A failing error mail (SMTP refused, OVH forbids m
+          ail from SSH...) must not
+      51              # crash the request or the cron: the error is alrea
+          dy written by "nested".
+      52 +            # It must sit *inside* "deduplicated": a deduplicat
+         +ion (buffer) handler flushes                                   
+      53 +            # itself from its own shutdown function, bypassing 
+         +any group wrapped around it.                                   
+      54              mail_safe:
+      55                  type: whatfailuregroup
+      50 -                members: [ deduplicated ]                      
+      51 -            # Mail the buffered log to the webmaster when an er
+         -ror occurs (same error mailed once per 60 s)                   
+      52 -            deduplicated:                                      
+      53 -                type: deduplication                            
+      54 -                handler: mailer                                
+      56 +                members: [ mailer ]                            
+      57              mailer:
+      58                  type: symfony_mailer
+      59                  from_email: '%env(MERCREDI_FROM)%'
+  ⎿  Created tests/Mailer/Transport/OvhSendmailTransportTest.php (+84 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Mailer\Transport;                          
+       4 +                                                               
+       5 +use AcMarche\Mercredi\Mailer\Transport\OvhSendmailTransport;   
+       6 +use AcMarche\Mercredi\Mailer\Transport\OvhSendmailTransportFact
+         +ory;                                                           
+       7 +use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;        
+       8 +use Symfony\Component\Mailer\Envelope;                         
+       9 +use Symfony\Component\Mailer\Exception\TransportException;     
+      10 +use Symfony\Component\Mailer\SentMessage;                      
+      11 +use Symfony\Component\Mailer\Transport;                        
+      12 +use Symfony\Component\Mailer\Transport\TransportInterface;     
+      13 +use Symfony\Component\Mime\Email;                              
+      14 +use Symfony\Component\Mime\RawMessage;                         
+      15 +                                                               
+      16 +class OvhSendmailTransportTest extends KernelTestCase          
+      17 +{                                                              
+      18 +    public function testDsnIsResolvedByTheContainer(): void    
+      19 +    {                                                          
+      20 +        self::bootKernel();                                    
+      21 +        /** @var Transport $transport */                       
+      22 +        $transport = self::getContainer()->get('mailer.transpor
+         +t_factory');                                                   
+      23 +                                                               
+      24 +        self::assertInstanceOf(OvhSendmailTransport::class, $tr
+         +ansport->fromString('ovh://default'));                         
+      25 +    }                                                          
+      26 +                                                               
+      27 +    public function testExitCodeMinusOneWithoutOutputIsConsider
+         +edSent(): void                                                 
+      28 +    {                                                          
+      29 +        $transport = new OvhSendmailTransport($this->sendmailFa
+         +ilingWith('Process failed with exit code -1: '));              
+      30 +                                                               
+      31 +        self::assertInstanceOf(SentMessage::class, $transport->
+         +send($this->email()));                                         
+      32 +    }                                                          
+      33 +                                                               
+      34 +    public function testRefusalPrintedBySendmailIsStillAnError(
+         +): void                                                        
+      35 +    {                                                          
+      36 +        $transport = new OvhSendmailTransport($this->sendmailFa
+         +ilingWith(                                                     
+      37 +            'Process failed with exit code -1: sendmail: fatal:
+         + User visitmp(58520) is not allowed to submit mail',           
+      38 +        ));                                                    
+      39 +                                                               
+      40 +        $this->expectException(TransportException::class);     
+     … 44 more lines (ctrl+o to expand)
+
+● Tests pass. Next I'll check the monolog fix against a mailer that always
+  fails, with the old config and then the new one:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● This setup doesn't reproduce the crash either way, which matches the earlier
+  session. I'll rely on the trace instead. Now I'm updating DEPLOY.md:
+
+● Bash(cd /var/www/atl; python3 - <<'EOF'
+      p='DEPLOY.md'…)
+  ⎿  diff --git a/DEPLOY.md b/DEPLOY.md
+     index b7a57d7..f264ad3 100644
+     --- a/DEPLOY.md
+     … +20 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+5 -2)
+      114  
+      115  - `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.
+           env.local` on the
+      116    server, as for the website.
+      117 -- On OVH shared hosting, use `MAILER_DSN=native://default` (PH
+          -P `mail()`,                                                   
+      118 -  relayed by OVH). Outgoing SMTP connections (`smtp://smtp.mai
+          -l.ovh.net:465`)                                               
+      117 +- On OVH shared hosting, use `MAILER_DSN=ovh://default`: the `
+          +sendmail_path`                                                
+      118 +  of php.ini, relayed by OVH, like `native://default`. Unlike 
+          +`native://`, it                                               
+      119 +  accepts sendmail's "exit code -1" when sendmail printed noth
+          +ing. In OVH cron                                              
+      120 +  tasks, PHP can't read sendmail's exit status, so `native://`
+          + reports a failure                                            
+      121 +  for a mail that was actually sent, and Messenger then sends 
+          +it again on retry. Outgoing SMTP connections (`smtp://smtp.mai
+          +l.ovh.net:465`)                                               
+      122    are refused ("Connection refused"), and any mail sent from a
+           n SSH session is
+      123    rejected ("User ... is not allowed to submit mail"), so `bin
+           /console
+      124    mailer:test` over SSH proves nothing. The sender (`MERCREDI_
+           FROM`) must be an
+
+● Bash(cd /var/www/atl; python3 - <<'EOF'
+      p='DEPLOY.md'…)
+  ⎿  - On OVH shared hosting, use `MAILER_DSN=ovh://default`: the `sendmail
+     _path`
+       of php.ini, relayed by OVH, like `native://default`. Unlike `native:
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+2 -2)
+      118    of php.ini, relayed by OVH, like `native://default`. Unlike 
+           `native://`, it
+      119    accepts sendmail's "exit code -1" when sendmail printed noth
+           ing. In OVH cron
+      120    tasks, PHP can't read sendmail's exit status, so `native://`
+            reports a failure
+      121 -  for a mail that was actually sent, and Messenger then sends 
+          -it again on retry. Outgoing SMTP connections (`smtp://smtp.mai
+          -l.ovh.net:465`)                                               
+      122 -  are refused ("Connection refused"), and any mail sent from a
+          -n SSH session is                                              
+      121 +  for a mail that was actually sent, and Messenger then sends 
+          +it again on retry.                                            
+      122 +  Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`) a
+          +re refused ("Connection refused"), and any mail sent from an S
+          +SH session is                                                 
+      123    rejected ("User ... is not allowed to submit mail"), so `bin
+           /console
+      124    mailer:test` over SSH proves nothing. The sender (`MERCREDI_
+           FROM`) must be an
+      125    address of a domain hosted at OVH.
+
+● Bash(cd /var/www/atl; python3 - <<'EOF'
+      p='DEPLOY.md'…)
+  ⎿  - On OVH shared hosting, use `MAILER_DSN=ovh://default`: the `sendmail
+     _path`
+       of php.ini, relayed by OVH, like `native://default`. Unlike `native:
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+3 -3)
+      119    accepts sendmail's "exit code -1" when sendmail printed noth
+           ing. In OVH cron
+      120    tasks, PHP can't read sendmail's exit status, so `native://`
+            reports a failure
+      121    for a mail that was actually sent, and Messenger then sends 
+           it again on retry.
+      122 -  Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`) a
+          -re refused ("Connection refused"), and any mail sent from an S
+          -SH session is                                                 
+      123 -  rejected ("User ... is not allowed to submit mail"), so `bin
+          -/console                                                      
+      124 -  mailer:test` over SSH proves nothing. The sender (`MERCREDI_
+          -FROM`) must be an                                             
+      122 +  Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`) a
+          +re refused                                                    
+      123 +  ("Connection refused"), and any mail sent from an SSH sessio
+          +n is ("User ... is not allowed to submit mail"), so `bin/conso
+          +le mailer:test`                                               
+      124 +  over SSH proves nothing. The sender (`MERCREDI_FROM`) must b
+          +e an                                                          
+      125    address of a domain hosted at OVH.
+      126  - To test mail in real cron conditions, create a temporary tas
+           k running
+      127    `bin/cron-mailtest.php`: it sends a test mail from and to `M
+           ERCREDI_FROM`.
+
+● Update(DEPLOY.md)
+  ⎿  Added 4 lines, removed 3 lines
+      120    tasks, PHP can't read sendmail's exit status, so `native://`
+            reports a failure
+      121    for a mail that was actually sent, and Messenger then sends 
+           it again on retry.
+      122    Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`) a
+           re refused
+      123 -  ("Connection refused"), and any mail sent from an SSH sessio
+          -n is ("User ... is not allowed to submit mail"), so `bin/conso
+          -le mailer:test`                                               
+      124 -  over SSH proves nothing. The sender (`MERCREDI_FROM`) must b
+          -e an                                                          
+      125 -  address of a domain hosted at OVH.                          
+      123 +  ("Connection refused"), and any mail sent from an SSH sessio
+          +n is rejected                                                 
+      124 +  ("User ... is not allowed to submit mail"), so `bin/console 
+          +mailer:test`                                                  
+      125 +  over SSH proves nothing. The sender (`MERCREDI_FROM`) must b
+          +e an address of                                               
+      126 +  a domain hosted at OVH.                                     
+      127  - To test mail in real cron conditions, create a temporary tas
+           k running
+      128    `bin/cron-mailtest.php`: it sends a test mail from and to `M
+           ERCREDI_FROM`.
+      129    Check `var/log/cron.log` and `var/log/cron-cron-mailtest.las
+           t.log` after one
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Ce qui se passe
+
+  Les deux mails reçus montrent la même chose : l'envoi fonctionne depuis le 
+  cron, mais Symfony croit qu'il a échoué.
+
+  - Le mail « Test mail CRON 11:36:03 » est bien arrivé, alors que le même
+    passage a fini par Process failed with exit code -1: (ProcessStream.php:77,
+    exit 255).
+  - Dans le mail d'erreur de 11:24, le message en file a été retenté 3 fois,
+    puis mis dans failed. Chaque essai a probablement réellement envoyé le mail,
+    donc il a dû partir 4 fois.
+
+  Dans une tâche cron OVH, PHP n'arrive pas à lire le code de retour de sendmail
+  : proc_close() renvoie -1, même quand le mail est accepté. native:// traite
+  ce -1 comme un échec. Avec --queue --count=3, tu as peut-être reçu les 3 mails
+  de test en plusieurs exemplaires chacun.
+
+  Deuxième problème : le crash final (exit 255) vient du mail d'erreur envoyé
+  par monolog. La pile se termine par [internal function]: 
+  BufferHandler->close(). Le handler de déduplication se vide tout seul à la fin
+  du script, via sa propre fonction d'arrêt, donc le whatfailuregroup placé
+  autour de lui (commit aec304e) ne le protégeait pas.
+
+  Corrections (non commitées)
+
+  1. Nouveau transport ovh://default
+     (src/AcMarche/Mercredi/src/Mailer/Transport/). Il utilise le même sendmail
+     que native:// et accepte « exit code -1 » seulement quand sendmail n'a rien
+     affiché. Un vrai refus reste une erreur, parce que sendmail affiche alors
+     la raison, comme le sendmail: fatal: User … not allowed vu en SSH.
+  2. config/packages/monolog.yaml : l'ordre est maintenant deduplicated → 
+     mail_safe (whatfailuregroup) → mailer. Le filet de sécurité est donc à
+     l'intérieur et protège aussi le vidage en fin de script. Je n'ai pas pu
+     reproduire ce crash en local, ni avant ni après la modification. Ce
+     correctif repose donc sur la lecture de la pile d'appels et du code de
+     Monolog.
+  3. DEPLOY.md recommande maintenant MAILER_DSN=ovh://default.
+  4. Tests : tests/Mailer/Transport/OvhSendmailTransportTest.php. Toute la suite
+     passe (36 tests).
+
+  Sur OVH, après déploiement
+
+  # dans .env.local
+  MAILER_DSN=ovh://default
+
+  php bin/console cache:clear
+  php bin/console messenger:failed:show     # messages déjà envoyés mais marqués
+  en échec
+  php bin/console messenger:failed:remove <id>   # les supprimer, sinon un retry
+  les renverrait encore
+
+  Ensuite, laisse tourner bin/cron-mailtest.php une fois. var/log/cron.log
+  devrait afficher exit=0, et un seul mail devrait arriver.
+
+  À noter : en prod, mailer.yaml force envelope.recipients: 
+  [webmaster@marche.be]. Tous les mails partent donc vers le webmaster, et c'est
+  pour ça que le test adressé à titi@ est arrivé chez toi. Pense à retirer
+  cette ligne avant de réactiver l'envoi des factures, sauf si tu l'as mise
+  exprès.
+
+  Je commite ?
+
+✻ Sautéed for 2m 25s · done 11:44 AM
+
+❯ les tests sont concluant                                                      
+  X-Mozilla-Status: 0001                                                        
+  X-Mozilla-Status2: 00000000                                                   
+  Return-Path: <SRS0=WvX/=JE=mail-out.cluster130.hosting.ovh.net=bounce-id=D319 
+  =U58520.cluster130.ovh.net=1794741845.5056577-UVVW7@marche.be>                
+  Delivered-To: jean-francois.senechal@ac.marche.be                             
+  Received: from gw3.marche.be (localhost [127.0.0.1])                          
+      by mail26-srs.marche.be (Postfix) with ESMTP id D8F0C3F9D2                
+      for <jean-francois.senechal@ac.marche.be>; Sun, 15 Nov 2026 12:24:11      
+  +0100 (CET)                                                                   
+  Received: from localhost (localhost [127.0.0.1])                              
+      by gw3.marche.be (Postfix) with ESMTP id C3BC03F9DF                       
+      for <jean-francois.senechal@ac.marche.be>; Sun, 15 Nov 2026 12:24:10      
+  +0100 (CET)                                                                   
+  X-Virus-Scanned: Debian amavis at mail26                                      
+  X-Spam-Flag: NO                                                               
+  X-Spam-Score: -1.751                                                          
+  X-Spam-Level:                                                                 
+  X-Spam-Status: No, score=-1.751 required=2.5 tests=[BAYES_00=-1.9,            
+   DKIM_SIGNED=0.1, DKIM_VALID=-0.1, DKIM_VALID_AU=-0.1, DMARC_PASS=-0.001,     
+   HEADER_FROM_DIFFERENT_DOMAINS=0.25, RCVD_IN_DNSWL_NONE=-0.0001,              
+   SPF_HELO_NONE=0.001, SPF_PASS=-0.001] autolearn=no autolearn_force=no        
+  X-Spam-Relay-Country: FR FR ** ** ** FR **                                    
+  Received: from gw3.marche.be ([127.0.0.1])                                    
+   by localhost (mail26.marche.be [127.0.0.1]) (amavis, port 10024) with ESMTP  
+   id 4VpbJZ_GZz_t for <jean-francois.senechal@ac.marche.be>;                   
+   Sun, 15 Nov 2026 12:24:05 +0100 (CET)                                        
+  Authentication-Results: gw3.marche.be;                                        
+      dkim=pass (2048-bit key; unprotected) header.d=visitmarche.be             
+  header.i=@visitmarche.be header.a=rsa-sha256 header.s=ovhmo4417327-selector1  
+  header.b=TbkPCsXw;                                                            
+      dkim-atps=neutral                                                         
+  Received-SPF: Pass (mailfrom) identity=mailfrom; client-ip=178.33.249.249;    
+  helo=5.mo565.mail-out.ovh.net; envelope-from=bounce-id=d319=u58520.cluster130 
+  .ovh.net=1794741845.5056577-uvvw7@mail-out.cluster130.hosting.ovh.net;        
+  receiver=marche.be                                                            
+  Received: from 5.mo565.mail-out.ovh.net (5.mo565.mail-out.ovh.net             
+  [178.33.249.249])                                                             
+      by gw3.marche.be (Postfix) with ESMTPS id 7F6503FB9C                      
+      for <webmaster@marche.be>; Sun, 15 Nov 2026 12:24:05 +0100 (CET)          
+  Received: from director5.derp.mail-out.ovh.net                                
+  (director5.derp.mail-out.ovh.net [79.137.60.225])                             
+      by mo565.mail-out.ovh.net (Postfix) with ESMTPS id 4jS7tF5r27z5wBY        
+      for <webmaster@marche.be>; Sun, 15 Nov 2026 11:24:05 +0000 (UTC)          
+  Received: from director5.derp.mail-out.ovh.net                                
+  (director5.derp.mail-out.ovh.net. [127.0.0.1])                                
+          by director5.derp.mail-out.ovh.net (inspect_sender_mail_agent) with   
+  SMTP                                                                          
+          for <webmaster@marche.be>; Sun, 15 Nov 2026 11:24:05 +0000 (UTC)      
+  Received: from mail-out01.cluster130.gra.hosting.ov                           
+  ──── (80 lines hidden) ────────────────────────────────────────────────────── 
+  h ESMTP id 63AE620046                                                         
+      for <webmaster@marche.be>; Sun, 15 Nov 2026 12:36:04 +0100 (CET)          
+  X-Mailbox-Line: From titi@visitmarche.be  Sun Nov 15 12:36:03 2026            
+  Received: from cluster130.hosting.ovh.net (gwc.cluster130.hosting.ovh.net     
+  [5.135.43.82])                                                                
+      by mail-out01.cluster130.gra.hosting.ovh.net (Postfix) with ESMTP id      
+  F088220046                                                                    
+      for <webmaster@marche.be>; Sun, 15 Nov 2026 12:36:03 +0100 (CET)          
+  Received: from localhost.localdomain (localhost [127.0.0.1])                  
+      by localhost.domain.tld (Postfix) with ESMTP id 5BDA6164                  
+      for <webmaster@marche.be>; Sun, 15 Nov 2026 12:36:03 +0100 (CET)          
+  Authentication-Results: ovh-mailtrap; auth=pass (1794742563)                  
+  smtp.auth=titi@visitmarche.be                                                 
+  X-Sender-ID: 58520@cluster130                                                 
+  Received: by cluster130.hosting.ovh.net (Postfix, from userid 58520)          
+      id 416211D2; Sun, 15 Nov 2026 12:36:03 +0100 (CET)                        
+  To: titi@visitmarche.be                                                       
+  From: titi@visitmarche.be                                                     
+  Subject: Test mail CRON 2026-11-15 12:36:02                                   
+  Message-ID: <26c6c605d8974537848143b1ff401503@visitmarche.be>                 
+  MIME-Version: 1.0                                                             
+  Date: Sun, 15 Nov 2026 12:36:03 +0100                                         
+  Content-Type: text/plain; charset=utf-8                                       
+  Content-Transfer-Encoding: quoted-printable                                   
+  X-Ovh-Tracer-Id: 11034693030247042575                                         
+  X-VR-SPAMSTATE: OK                                                            
+  X-VR-SPAMSCORE: 15                                                            
+  X-VR-SPAMCAUSE:                                                               
+  dmFkZTGdwj26axBK8sxwjKgdXGXlCE06g6F5wr09dTQXGJHOk2KhCqBLqFAUc2VVeS5nZQzQyMFMY 
+  dSAaOulE+mAArkdo+cxOjFeQIN9pc8UmgekLNfFovWq+MYeShxcjkE1XREI/eU9h5TJ+eJQ4N5Qpn 
+  TpETNvMyz09taj2AeIDiT2oASnByUEMFz3P92phX2bUCvsZy5UzuvyGdWZa9nTSPIo2rC6GwbiuIP 
+  AEckPTBJnuu3nYfy8b6I5RrSde2DGrurG3Q/sxRPCQNNk0F4/iVKenXLfP09N778FtohMmA3PUAtN 
+  m/HWwpQZhVg6BeMGmqHr5gkP7rlYuhKwgOeV373jSEZXD7/2RUtRmBeO2wl9cBY50pNz3SEsAj33J 
+  QHtq3rVyaTVYip6d6mmF8OpuTFfNLuKXpBBoN4jKI3uU4eLNXXJ0yn7L3281DuOUZ++0iixSoyrcz 
+  63376C/xjElSmvXcMTISVOn6VROFFuWatbwaSG3ZwjDtJ5H+YfBiqOYbHlapXZm9GmxsHBdyw6YkQ 
+  eBQwsKNHqPGUhpOuef2jUK4o1bllG936QWEpDW8tU5h0KiUu7lBepgJcqUZdQ2l5SiL18gyd4WVnO 
+  yrAjiwT8fhXDG0mrAO/jCSWifRJikq5+JeuobA0nvuVTA9cknPjBJeaqayNkE1A1D/UEVZ8hFg    
+  DKIM-Signature: a=rsa-sha256;                                                 
+  bh=/bn4UwNq+jCZ5kBbUbgX42UtayQ3GYkM1ppZPGiSgP8=;                              
+   c=relaxed/relaxed; d=visitmarche.be; h=From; s=ovhmo4417327-selector1;       
+   t=1794742564; v=1;                                                           
+   b=Scm5xfp8RuZGNnlgZGfbC6ZApeU8BOq8ZVz5N40Rx3O6dQtao+G9o6MaZyMrDheGWqT/79dB   
+   kjjBVYaqhQsJIa0tmbvLXE2WDYYsCpZQGa1yPFSJH17YOVPf0LZS+YOKGFhEuSIz80rJj+cfgPt  
+   EoUl7ZSAYnAnjtxugc4MKvxUa64f+pyb18EVx7pvUd+ckORPCV8f8Xu4LjhAN/1vDitGnc8Q/lo  
+   P9RDrqlHDmZL2vPbpaTPLn17gbJ8VyJw9fdVLlvBoWuq7lMM7Bvti7OQTcNpWfbHanUQaRNllYT  
+   MR0EN24NYqqqqs4bjG2KtRfRPU7cvWFW7Fuawa0gjCbSQ==                              
+                                                                                
+  Envoy=C3=A9 par bin/cron-mailtest.php (PHP 8.5.12, cli).                      
+                                                                                
+
+● Les deux mails sont arrivés avec ovh://default : celui de la file async et
+  celui du cron. Je commite.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Les tests sur OVH sont concluants : les mails partent maintenant depuis le
+  cron sans être marqués en échec. Je n'ai pas eu à commiter : tu l'avais déjà
+  fait à 11:48 dans f8a053f (« add OVH sendmail transport for cron mail »), et
+  ce commit contient toutes les modifications.
+
+  - « Test mail CRON 12:36:02 » : le cron de test a envoyé le mail via
+    ovh://default.
+  - « file async 2/3 », créé hier à 18:56 et parti aujourd'hui à 12:24 : la file
+    async est bien traitée par le cron.
+
+  Il reste quelques points à faire sur OVH :
+
+  1. Messages bloqués dans failed : php bin/console messenger:failed:show. Ceux
+     d'avant le correctif sont probablement déjà partis (la plupart en plusieurs
+     exemplaires). Supprime-les avec messenger:failed:remove <id> plutôt que de
+     les relancer.
+  2. Supprimer la tâche cron temporaire bin/cron-mailtest.php.
+  3. Destinataire forcé en prod : config/packages/mailer.yaml envoie encore tous
+     les mails à webmaster@marche.be (envelope.recipients). Si ce n'est pas
+     voulu, il faut retirer ce bloc avant de réactiver cron-facture. Je peux le
+     faire si tu veux.
+
+✻ Baked for 15s · done 12:44 PM
+
+❯ je voudrais verifier en envoyant toutes les factures du mois d'octobre, mais  
+  pas vers les vrais destinataires, en changeant dans le TO:                    
+  [webaster@marche,vrai-email@]                                                 
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● J'ai vérifié le code d'envoi des factures : la config prod actuelle fait déjà
+  cette redirection, il n'y a rien à modifier.
+
+  Pourquoi c'est déjà le cas
+
+  config/packages/mailer.yaml contient, en prod :
+
+  envelope:
+      recipients: [ 'webmaster@marche.be' ]
+
+  - Le champ To: reste celui du vrai tuteur, donc tu vois à qui la facture
+    serait partie.
+  - La livraison se fait uniquement à webmaster@marche.be, que ce soit en To, Cc
+    ou Bcc.
+
+  Ton mail « file async 2/3 » le montre : il avait To: jfsenechal@gmail.com et
+  il est arrivé chez webmaster@marche.be.
+
+  FactureCronHandler passe aussi par cette redirection, même s'il envoie
+  directement par le transport. J'ai vérifié que l'EnvelopeListener est bien
+  branché en prod. Le rapport d'exécution et les alertes partent aussi chez
+  webmaster.
+
+  Si tu veux recevoir les mails sur une autre adresse en plus, ajoute-la à la
+  liste : recipients: [ 'webmaster@marche.be', 'autre@…' ]. Dis-moi laquelle et
+  je l'ajoute.
+
+  Procédure pour octobre
+
+  1. Dans l'admin, ouvre l'envoi de toutes les factures, choisis octobre, puis
+     valide.
+     - Coche « force » si certaines factures d'octobre sont déjà marquées
+       envoyées. Sinon, elles ne sont pas reprises.
+  2. La tâche cron-facture doit être active. Chaque passage envoie au plus 41
+     factures, avec au moins 60 minutes entre deux passages et 100 mails par
+     heure maximum. Pour un mois complet, compte plusieurs heures.
+  3. Suis l'avancement dans var/log/cron.log et dans le mail « Result envoie
+     facture ».
+
+  Attention avant le vrai envoi
+
+  Le test marque les factures comme envoyées : les champs envoyeLe et envoyeA
+  sont remplis avec l'adresse du tuteur. Pour l'envoi réel :
+
+  - coche « force » pour octobre, ce qui remet envoyeLe à vide pour les factures
+    non payées ;
+  - puis retire le bloc envelope.recipients de mailer.yaml (section when@prod),
+    déploie et fais cache:clear.
+
+  Si tu oublies l'une de ces deux étapes, soit rien ne part, soit tout repart
+  encore chez webmaster.
+
+✻ Churned for 43s · done 1:09 PM
+
+❯ ajoute jfsenechal@gmail.com dans les recipients                               
+
+● Bash(cd /var/www/atl; python3 - <<'EOF'
+      p='config/packages/mailer.yaml'…)
+  ⎿  diff --git a/config/packages/mailer.yaml b/config/packages/mailer.yaml
+     index e1dfb7e..68cb18e 100644
+     --- a/config/packages/mailer.yaml
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated config/packages/mailer.yaml (+1 -1)
+       6      framework:
+       7          mailer:
+       8              envelope:
+       9 -                recipients: [ 'webmaster@marche.be' ]          
+       9 +                recipients: [ 'webmaster@marche.be', 'jfsenecha
+         +l@gmail.com' ]                                                 
+      10  
+      11  when@dev:
+      12      framework:
+
+● J'ai ajouté jfsenechal@gmail.com dans config/packages/mailer.yaml (section
+  when@prod), à côté de webmaster@marche.be. En prod, chaque mail est maintenant
+  livré uniquement à ces deux adresses, et le champ To: montre toujours le vrai
+  tuteur. La config prod est bien prise en compte et les tests passent.
+
+  Ce n'est pas encore commité. Sur OVH, après le déploiement, lance php 
+  bin/console cache:clear, sinon l'ancienne liste reste active.
+
+  Ta boîte Gmail recevra toutes les factures d'octobre, avec leur PDF.
+
+✻ Sautéed for 13s · done 1:30 PM

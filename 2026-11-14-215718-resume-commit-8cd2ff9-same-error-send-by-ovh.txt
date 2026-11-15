@@ -1,0 +1,1279 @@
+ ▐▛███▛█   Claude Code v2.1.325
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   /var/www/atl
+
+
+❯ resume commit 8cd2ff9 same error send by ovh                                  
+                                                                                
+  Suite à 10 erreurs d'exécution consécutives, une tâche planifiée (CRON) a été 
+  désactivée :                                                                  
+  Commande exécutée : bin/cron-facture.php                                      
+                                                                                
+  Ces erreurs d'exécution sont généralement causées par une anomalie dans le    
+  code ou un temps d'exécution trop long.                                       
+  i tnink i c'ant use smtp in console, by i don't have error log                
+  cat var/log/cron.log                                                          
+  [2026-11-14 11:21:10] cron-facture exit=0 duration=16.4s memory=70.5MB ok     
+
+  Searched for 2 patterns, ran 2 shell commands (ctrl+o to expand)
+
+● The cron failure is likely a CGI-only fatal: bootstrap uses the STDOUT
+  constant, which doesn't exist under OVH's CGI binary, so nothing reaches the
+  log. I'm making the bootstrap CGI-safe, logging to file first and dropping the
+  time limit. · summary
+
+  Read 1 file (ctrl+o to expand)
+
+● Now the rewrite:
+
+● Write(bin/cron-bootstrap.php)
+  ⎿  Added 68 lines, removed 36 lines
+       4   * Lanceur commun aux scripts bin/cron-*.php (« Tâches planifié
+          es (CRON) » d'OVH
+       5   * mutualisé, qui exécutent un fichier PHP sans arguments).
+       6   *
+       7 - * Rend les erreurs lisibles dans les logs CRON d'OVH (hébergem
+         -ent → Plus → Logs) :                                           
+       8 - * - en-tête : date, PHP, environnement, limites ;             
+       9 - * - commande lancée en mode très verbeux (-vv, trace des excep
+         -tions en -vvv) ;                                               
+      10 - * - toute exception ou erreur fatale PHP est affichée avec fic
+         -hier, ligne et trace ;                                         
+      11 - * - code de sortie, durée et mémoire en fin d'exécution.      
+      12 - * Un résumé d'une ligne par exécution est aussi ajouté à var/l
+         -og/cron.log.                                                   
+       7 + * Attention : OVH peut lancer le script avec le binaire PHP CG
+         +I et non CLI. Les                                              
+       8 + * constantes STDIN/STDOUT/STDERR n'y existent pas, et max_exec
+         +ution_time n'y est                                             
+       9 + * pas illimité. Ce lanceur n'utilise donc que des flux ouverts
+         + explicitement.                                                
+      10 + *                                                             
+      11 + * Traces écrites :                                            
+      12 + * - var/log/cron.log : une ligne START dès le lancement (avant
+         + tout chargement),                                             
+      13 + *   puis une ligne de fin (code de sortie, durée, mémoire, rés
+         +umé). Un START sans                                            
+      14 + *   ligne de fin = processus tué (temps, mémoire) avant la fin
+         + ;                                                             
+      15 + * - var/log/cron-<nom>.last.log : sortie complète (-vv) de la 
+         +dernière exécution,                                            
+      16 + *   exceptions et erreurs fatales PHP comprises ;             
+      17 + * - la même sortie est aussi affichée dans les logs CRON d'OVH
+         + (hébergement → Plus → Logs).                                  
+      18   */
+      19  
+      20  use App\Kernel;
+      21  use Symfony\Bundle\FrameworkBundle\Console\Application;
+      22  use Symfony\Component\Console\Input\ArrayInput;
+      18 -use Symfony\Component\Console\Output\ConsoleOutput;            
+      23  use Symfony\Component\Console\Output\OutputInterface;
+      24 +use Symfony\Component\Console\Output\StreamOutput;             
+      25  use Symfony\Component\Dotenv\Dotenv;
+      26  
+      27  /**
+     ...
+      30  function run_cron(string $name, array $arguments): never
+      31  {
+      32      $projectDir = dirname(__DIR__);
+      33 +    $logDir = $projectDir.'/var/log';                          
+      34      $start = microtime(true);
+      35      $exitCode = 1;
+      30 -    $summary = 'not started';                                  
+      36 +    $summary = 'not finished';                                 
+      37 +    $finished = false;                                         
+      38  
+      39      error_reporting(\E_ALL);
+      33 -    ini_set('display_errors', 'stderr');                       
+      40 +    ini_set('display_errors', '1');                            
+      41      ini_set('log_errors', '0');
+      42 +    @set_time_limit(0);                                        
+      43      // OVH lance le script depuis la racine de l'hébergement : 
+          chemins relatifs au projet
+      44      chdir($projectDir);
+      45 +    @mkdir($logDir, 0775, true);                               
+      46  
+      38 -    $line = static function (string $text): void {             
+      39 -        fwrite(\STDOUT, '['.date('Y-m-d H:i:s').'] '.$text.\PHP
+         -_EOL);                                                         
+      47 +    $summaryLog = static function (string $text) use ($logDir):
+         + void {                                                        
+      48 +        @file_put_contents($logDir.'/cron.log', '['.date('Y-m-d
+         + H:i:s').'] '.$text."\n", \FILE_APPEND | \LOCK_EX);            
+      49      };
+      50  
+      51 +    // Premier écrit : prouve que le script a démarré, quel que
+         + soit l'environnement                                          
+      52 +    $summaryLog(sprintf(                                       
+      53 +        '%s START sapi=%s php=%s memory_limit=%s max_execution_
+         +time=%s',                                                      
+      54 +        $name,                                                 
+      55 +        \PHP_SAPI,                                             
+      56 +        \PHP_VERSION,                                          
+      57 +        ini_get('memory_limit'),                               
+      58 +        ini_get('max_execution_time'),                         
+      59 +    ));                                                        
+      60 +                                                               
+      61 +    // Sortie complète de cette exécution (fichier) + sortie st
+         +andard (logs OVH)                                              
+      62 +    $stdout = \defined('STDOUT') ? \STDOUT : fopen('php://outpu
+         +t', 'w');                                                      
+      63 +    $file = @fopen($logDir.'/cron-'.$name.'.last.log', 'w');   
+      64 +    $write = static function (string $text) use ($stdout, $file
+         +): void {                                                      
+      65 +        if (false !== $stdout) {                               
+      66 +            @fwrite($stdout, $text);                           
+      67 +        }                                                      
+      68 +        if (false !== $file) {                                 
+      69 +            @fwrite($file, $text);                             
+      70 +        }                                                      
+      71 +    };                                                         
+      72 +    $line = static function (string $text) use ($write): void {
+      73 +        $write('['.date('Y-m-d H:i:s').'] '.$text.\PHP_EOL);   
+      74 +    };                                                         
+      75 +                                                               
+      76      $describe = static function (\Throwable $e): string {
+      77          $text = '';
+      78          $prefix = '';
+     ...
+       86          return $text;
+       87      };
+       88  
+       55 -    $finish = static function () use ($name, $projectDir, $sta
+          -rt, &$exitCode, &$summary, $line): void {                     
+       89 +    $finish = static function () use ($name, $start, &$exitCod
+          +e, &$summary, &$finished, $line, $summaryLog): void {         
+       90 +        if ($finished) {                                      
+       91 +            return;                                           
+       92 +        }                                                     
+       93 +        $finished = true;                                     
+       94          $duration = round(microtime(true) - $start, 1);
+       95          $memory = round(memory_get_peak_usage(true) / 1048576,
+            1);
+       96          $line(sprintf('END %s exit=%d duration=%ss peak_memory
+           =%sMB', $name, $exitCode, $duration, $memory));
+       59 -        @file_put_contents(                                   
+       60 -            $projectDir.'/var/log/cron.log',                  
+       61 -            sprintf("[%s] %s exit=%d duration=%ss memory=%sMB 
+          -%s\n", date('Y-m-d H:i:s'), $name, $exitCode, $duration, $memo
+          -ry, $summary),                                                
+       62 -            \FILE_APPEND | \LOCK_EX,                          
+       63 -        );                                                    
+       97 +        $summaryLog(sprintf('%s exit=%d duration=%ss memory=%s
+          +MB %s', $name, $exitCode, $duration, $memory, $summary));     
+       98      };
+       99  
+      100      // Erreurs fatales (mémoire, temps d'exécution, classe man
+           quante...) : pas d'exception à attraper
+      101      register_shutdown_function(static function () use (&$exitC
+           ode, &$summary, $finish, $line): void {
+      102          $error = error_get_last();
+       69 -        if (null === $error || !\in_array($error['type'], [\E_
+          -ERROR, \E_PARSE, \E_CORE_ERROR, \E_COMPILE_ERROR, \E_USER_ERRO
+          -R], true)) {                                                  
+       70 -            return;                                           
+      103 +        if (null !== $error && \in_array($error['type'], [\E_E
+          +RROR, \E_PARSE, \E_CORE_ERROR, \E_COMPILE_ERROR, \E_USER_ERROR
+          +], true)) {                                                   
+      104 +            $exitCode = 255;                                  
+      105 +            $summary = sprintf('FATAL %s at %s:%d', $error['me
+          +ssage'], $error['file'], $error['line']);                     
+      106 +            $line('PHP FATAL ERROR: '.$error['message']);     
+      107 +            $line('  at '.$error['file'].':'.$error['line']); 
+      108          }
+       72 -        $exitCode = 255;                                      
+       73 -        $summary = sprintf('FATAL %s at %s:%d', $error['messag
+          -e'], $error['file'], $error['line']);                         
+       74 -        $line('PHP FATAL ERROR: '.$error['message']);         
+       75 -        $line('  at '.$error['file'].':'.$error['line']);     
+      109 +        // Sortie anormale (exit() dans le code, erreur fatale
+          +...) : on trace quand même la fin                             
+      110          $finish();
+      111      });
+      112  
+       79 -    $line(sprintf(                                            
+       80 -        'START %s | PHP %s (%s) | memory_limit=%s | max_execut
+          -ion_time=%s | cwd=%s',                                        
+       81 -        $name,                                                
+       82 -        \PHP_VERSION,                                         
+       83 -        \PHP_SAPI,                                            
+       84 -        ini_get('memory_limit'),                              
+       85 -        ini_get('max_execution_time'),                        
+       86 -        getcwd(),                                             
+       87 -    ));                                                       
+      113 +    $line(sprintf('START %s | PHP %s (%s) | memory_limit=%s | 
+          +max_execution_time=%s | cwd=%s', $name, \PHP_VERSION, \PHP_SAP
+          +I, ini_get('memory_limit'), ini_get('max_execution_time'), get
+          +cwd()));                                                      
+      114  
+      115      try {
+      116          require $projectDir.'/vendor/autoload.php';
+     ...
+      123          // Exceptions handled below so they are always printed
+            in full
+      124          $application->setCatchExceptions(false);
+      125  
+      100 -        $output = new ConsoleOutput(OutputInterface::VERBOSITY
+          -_VERY_VERBOSE, false);                                        
+      101 -        $exitCode = $application->run(new ArrayInput($argument
+          -s), $output);                                                 
+      102 -        $summary = 0 === $exitCode ? 'ok' : 'command returned 
+          -an error, see the cron output';                               
+      126 +        $stream = fopen('php://memory', 'w+');                
+      127 +        $output = new StreamOutput($stream, OutputInterface::V
+          +ERBOSITY_VERY_VERBOSE, false);                                
+      128 +        try {                                                 
+      129 +            $exitCode = $application->run(new ArrayInput($argu
+          +ments), $output);                                             
+      130 +        } finally {                                           
+      131 +            rewind($stream);                                  
+      132 +            $write((string) stream_get_contents($stream));    
+      133 +        }                                                     
+      134 +        $summary = 0 === $exitCode ? 'ok' : 'command returned 
+          +an error, see var/log/cron-'.$name.'.last.log';               
+      135      } catch (\Throwable $e) {
+      136          $exitCode = 1;
+      137          $summary = sprintf('%s: %s at %s:%d', $e::class, $e->g
+           etMessage(), $e->getFile(), $e->getLine());
+      138          $line('UNCAUGHT EXCEPTION');
+      107 -        fwrite(\STDOUT, $describe($e));                       
+      139 +        $write($describe($e));                                
+      140      }
+      141  
+      142      $finish();
+
+● Buffering the command output in memory would lose it if OVH kills the process.
+  I'll stream it straight to the file instead:
+
+● Update(bin/cron-bootstrap.php)
+  ⎿  Added 13 lines, removed 3 lines
+      123          // Exceptions handled below so they are always printed
+            in full
+      124          $application->setCatchExceptions(false);
+      125  
+      126 -        $stream = fopen('php://memory', 'w+');                
+      126 +        // Écrit directement dans le fichier (conservé même si
+          + le processus est tué),                                       
+      127 +        // recopié ensuite sur la sortie standard pour les log
+          +s OVH                                                         
+      128 +        $stream = false !== $file ? $file : fopen('php://memor
+          +y', 'w+');                                                    
+      129 +        $offset = ftell($stream);                             
+      130          $output = new StreamOutput($stream, OutputInterface::V
+           ERBOSITY_VERY_VERBOSE, false);
+      131          try {
+      132              $exitCode = $application->run(new ArrayInput($argu
+           ments), $output);
+      133          } finally {
+      131 -            rewind($stream);                                  
+      132 -            $write((string) stream_get_contents($stream));    
+      134 +            if (false !== $stdout) {                          
+      135 +                fflush($stream);                              
+      136 +                $copy = fopen(stream_get_meta_data($stream)['u
+          +ri'], 'r');                                                   
+      137 +                if (false !== $copy) {                        
+      138 +                    fseek($copy, $offset);                    
+      139 +                    stream_copy_to_stream($copy, $stdout);    
+      140 +                    fclose($copy);                            
+      141 +                }                                             
+      142 +            }                                                 
+      143          }
+      144          $summary = 0 === $exitCode ? 'ok' : 'command returned 
+           an error, see var/log/cron-'.$name.'.last.log';
+      145      } catch (\Throwable $e) {
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The new logging works and writes to the cron log file, failing locally only
+  because my CLI PHP lacks pdo_pgsql. Next I'm updating DEPLOY.md. · summary
+
+● Bash(python3 - <<'EOF'
+      p='DEPLOY.md'…)
+  ⎿  APP_ENV=prod bin/console mercredi:facture-send
+     ```
+     … +36 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+16 -7)
+      134  **Logs**), and the report is mailed after each run that did so
+           mething.
+      135  
+      136  Both cron scripts (`bin/cron-facture.php`, `bin/cron-messenger
+           .php`) go through
+      137 -`bin/cron-bootstrap.php`, which prints a START line (PHP versi
+          -on, `APP_ENV`,                                                
+      138 -`memory_limit`, `max_execution_time`), runs the command in ver
+          -bose mode, prints                                             
+      139 -any exception or PHP fatal error with file, line and stack tra
+          -ce, and ends with                                             
+      140 -an END line (exit code, duration, peak memory). A one-line sum
+          -mary of every run                                             
+      141 -is also appended to `var/log/cron.log`.                       
+      137 +`bin/cron-bootstrap.php`. OVH may run them with the PHP **CGI*
+          +* binary (no                                                  
+      138 +`STDOUT` constant, limited `max_execution_time`), so the boots
+          +trap only uses                                                
+      139 +explicitly opened streams and calls `set_time_limit(0)`. It wr
+          +ites:                                                         
+      140  
+      141 +- `var/log/cron.log`: a `START` line as the very first action 
+          +(with the PHP                                                 
+      142 +  SAPI, version and limits), then one line per run with exit c
+          +ode, duration,                                                
+      143 +  peak memory and the error. A `START` with no line after it m
+          +eans the process                                              
+      144 +  was killed (time or memory limit).                          
+      145 +- `var/log/cron-<name>.last.log`: full verbose output of the l
+          +ast run, with                                                 
+      146 +  exceptions, PHP fatal errors, file, line and stack trace (al
+          +so printed in the                                             
+      147 +  OVH cron logs).                                             
+      148 +                                                              
+      149 +If OVH reports failures but `var/log/cron.log` has no `START` 
+          +line at that time,                                            
+      150 +the script did not even start: check the PHP version selected 
+          +for the task.                                                 
+      151 +                                                              
+      152  OVH disables a scheduled task after 10 consecutive failed runs
+            (exit code other
+      144 -than 0, or too long). Read `var/log/cron.log` or the OVH cron 
+          -logs, fix the                                                 
+      145 -cause, run the script once by hand (`php bin/cron-facture.php`
+          -), then re-enable                                             
+      153 +than 0, or too long). Read these logs, fix the cause, run the 
+          +script once by                                                
+      154 +hand (`php bin/cron-facture.php`), then re-enable             
+      155  the task in the OVH control panel.
+      156  
+      157  ## 9. Mail queue worker (once)
+
+● I think I found why OVH disables the task without leaving anything in your
+  log. I made the fix, but it isn't verified on OVH yet.
+
+  Why there's no error log: in commit 8cd2ff9, bin/cron-bootstrap.php printed
+  every line with fwrite(\STDOUT, ...). The STDOUT constant only exists when PHP
+  runs as the command-line (CLI) program. OVH's scheduler can run scripts with
+  the CGI version of PHP instead. There, the first START line crashes with
+  "Undefined constant STDOUT". The error handler tries to print with the same
+  STDOUT, so it crashes too, before writing anything to var/log/cron.log. Your
+  manual run used CLI PHP, so it worked and wrote exit=0. I couldn't confirm
+  that OVH uses CGI, because CGI PHP isn't installed on this machine.
+
+  What I changed in bin/cron-bootstrap.php:
+  - Logs first: it writes a START sapi=... php=... memory_limit=... 
+    max_execution_time=... line to var/log/cron.log before doing anything else.
+    The sapi value will show whether OVH runs CLI or CGI.
+  - No STDOUT: output goes through streams the script opens itself, so it works
+    under CLI and CGI.
+  - Full output kept: every run writes its complete output (exceptions, PHP
+    fatal errors, stack traces) to var/log/cron-cron-facture.last.log. It's
+    written as the run goes, so the file keeps what was printed even if OVH
+    kills the process. The same output still goes to OVH's cron logs.
+  - No time limit: it calls set_time_limit(0), because CGI PHP doesn't run
+    without a time limit by default.
+  - End line always written: a summary line is added at the end even after a PHP
+    fatal error or an exit(). A START with nothing after it means the process
+    was killed for time or memory.
+
+  I also updated the cron section of DEPLOY.md.
+
+  Tested here: php bin/cron-facture.php writes the START line, the full trace in
+  the .last.log file and the summary line. It failed here only because my local
+  PHP has no Postgres driver (could not find driver). The 4 command tests pass.
+
+  About SMTP: sending mail over SMTP from a console command works. The cron job
+  just needs the same MAILER_DSN as the website, from .env.local.
+
+  Next steps on OVH:
+  1. Deploy, then re-enable the task.
+  2. After the next scheduled run, check var/log/cron.log and
+     var/log/cron-cron-facture.last.log:
+     - If the sapi= value or PHP version differs from your manual run, check the
+       PHP version chosen for the task in the OVH panel.
+     - The local driver error suggests another possible cause: if that PHP lacks
+       pdo_pgsql, every run fails the same way.
+     - If there's no START line at all, the script never started. The PHP
+       version or the file path set for the task is wrong.
+
+  Nothing is committed yet. Do you want me to commit it?
+
+✻ Worked for 1m 35s · done 4:05 PM
+
+❯ is the mail_dsn right or ="native://titi@visit...                             
+  ⎿  ⧉ Selected 1 lines from data/.env.local in PhpStorm
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Keep the smtp:// line. It's the right choice, and Symfony reads it correctly.
+  I tested the same format with a fake password, and Symfony still finds
+  titi@visitmarche.be as the user, the password, smtp.mail.ovh.net as the host
+  and 465 as the port. The @ in the username doesn't break it.
+
+  For safety, you can still write the @ as %40. Symfony decodes it, and it
+  avoids problems if the password ever contains @, : or /:
+  MAILER_DSN="smtp://titi%40visitmarche.be:YOUR_PASSWORD@smtp.mail.ovh.net:465"
+
+  Don't switch to native://. It doesn't connect to OVH's mail server; it hands
+  the mail to PHP's own sendmail setting. That path is less reliable in a cron
+  job and gives you no error when a mail fails.
+
+  Two things to check:
+  1. File location: Symfony only reads .env.local in the project root, next to
+     .env. It doesn't read data/.env.local. If the server's root .env.local
+     doesn't have MAILER_DSN, the cron job gets the default from .env, which is
+     null://null. With that setting, mails are thrown away without any error.
+  2. Test SMTP from the console on OVH: your MailDebugController page (route
+     mercredi_admin_mail_debug) sends a test mail from the website. To test the
+     same thing from the command line, run:
+  php bin/console mailer:test you@example.com
+     If that sends, the cron job can send mail over SMTP too.
+
+  I saw the real password in data/.env.local while checking this. It stayed on
+  this machine and I haven't repeated it anywhere.
+
+✻ Worked for 22s · done 4:15 PM
+
+❯  php bin/console mailer:test jfsenechal@gmail.com                             
+  16:18:38 ERROR     [mail] [MERCREDI] Mail error To: jfsenechal@gmail.com      
+  From: from@example.org                                                        
+  Subject: Testing transport                                                    
+  MIME-Version: 1.0                                                             
+  Date: Sat, 14 Nov 2026 16:18:38 +0100                                         
+  Message-ID: <d7714509f79b524858a43ff23b0820db@example.org>                    
+  Content-Type: text/plain; charset=utf-8                                       
+  Content-Transfer-Encoding: quoted-printable                                   
+                                                                                
+  Testing body                                                                  
+  16:18:38 CRITICAL  [console] Error thrown while running command "mailer:test  
+  'jfsenechal@gmail.com'". Message: "Connection could not be established with   
+  host "ssl://smtp.mail.ovh.net:465": stream_socket_client(): Unable to connect 
+  to ssl://smtp.mail.ovh.net:465 (Connection refused)" ["exception" =>          
+  Symfony\Component\Mailer\Exception\TransportException^ { …},"command" =>      
+  "mailer:test 'jfsenechal@gmail.com'","message" => "Connection could not be    
+  established with host "ssl://smtp.mail.ovh.net:465": stream_socket_client():  
+  Unable to connect to ssl://smtp.mail.ovh.net:465 (Connection refused)"]       
+                                                                                
+  In SocketStream.php line 154:                                                 
+                                                                                
+    Connection could not be established with host                               
+  "ssl://smtp.mail.ovh.net:465": stream_socket_client(): Unable to connect to   
+  ssl://smtp.mail.ovh.net:465 (Connection refu                                  
+    sed)                                                                        
+                                                                                
+                                                                                
+                                                                                
+  mailer:test [--from FROM] [--subject SUBJECT] [--body BODY] [--transport      
+  TRANSPORT] [--] <to>                                                          
+                                                                                
+  In SocketStream.php line 154:                                                 
+                                                                                
+    Connection could not be established with host                               
+  "ssl://smtp.mail.ovh.net:465": stream_socket_client(): Unable to connect to   
+  ssl://smtp.mail.ovh.net:465 (Connection refu                                  
+    sed)                                                                        
+                                                                                
+                                                                                
+                                                                                
+  mailer:test [--from FROM] [--subject SUBJECT] [--body BODY] [--transport      
+  TRANSPORT] [--] <to>                                                          
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● You were right and I was wrong. On this server, you need native://, not
+  smtp://.
+
+  Why: "Connection refused" on smtp.mail.ovh.net:465 means the server blocks the
+  connection itself. Your password was never even checked. OVH shared hosting
+  generally doesn't let scripts open SMTP connections. PHP's own mail() function
+  goes through OVH's internal mail relay instead, and native:// uses that
+  relay. This probably also explains the cron failures. When invoices or the
+  report email fail to send, mercredi:facture-send returns an error code. After
+  10 failed runs in a row, OVH disables the task.
+
+  Test it on the server before changing anything. A real environment variable
+  overrides .env.local:
+  php -r 'echo ini_get("sendmail_path"), PHP_EOL;'
+  MAILER_DSN=native://default php bin/console mailer:test jfsenechal@gmail.com 
+  --from=titi@visitmarche.be
+  - The first line should print OVH's sendmail command. If it prints nothing,
+    native:// won't work.
+  - Use --from with an address on a domain hosted at OVH. Without it, the test
+    uses from@example.org, which OVH will likely refuse or mark as spam.
+
+  If the mail arrives, put this in .env.local at the project root:
+  MAILER_DSN=native://default
+  The text after native:// is ignored. native://titi@visit... would work too,
+  but default is the usual way to write it. With native://, the password isn't
+  needed in this file at all.
+
+  Things to check afterwards:
+  - The app's sender address (the "From" of invoices and reports) must also be
+    on a domain hosted at OVH.
+  - OVH caps how many mails mail() can send per hour. Keep MAILER_HOURLY_LIMIT
+    under that cap.
+  - Also test the website's mails once (contact form or login link). If the
+    website also used smtp://, its mails probably weren't being sent either.
+
+  Want me to change the MAILER_DSN example in DEPLOY.md to native://default, and
+  commit that together with the cron bootstrap fix?
+
+✻ Churned for 20s · done 4:19 PM
+
+❯ MAILER_DSN=native://default php bin/console mailer:test jfsenechal@gmail.com  
+  --from=titi@visitmarche.be                                                    
+                                                                                
+  16:20:59 ERROR     [mail] [MERCREDI] Mail error To: jfsenechal@gmail.com      
+  From: titi@visitmarche.be                                                     
+  Subject: Testing transport                                                    
+  MIME-Version: 1.0                                                             
+  Date: Sat, 14 Nov 2026 16:20:59 +0100                                         
+  Message-ID: <256257f83956a27bad5485d42166bb34@visitmarche.be>                 
+  Content-Type: text/plain; charset=utf-8                                       
+  Content-Transfer-Encoding: quoted-printable                                   
+                                                                                
+  Testing body                                                                  
+  16:20:59 CRITICAL  [console] Error thrown while running command "mailer:test  
+  'jfsenechal@gmail.com' --from='titi@visitmarche.be'". Message: "Process       
+  failed with exit code 75: sendmail: fatal: User visitmp(58520) is not allowed 
+  to submit mail\n" ["exception" =>                                             
+  Symfony\Component\Mailer\Exception\TransportException^ { …},"command" =>      
+  "mailer:test 'jfsenechal@gmail.com' --from='titi@visitmarche.be'","message"   
+  => "Process failed with exit code 75: sendmail: fatal: User visitmp(58520) is 
+  not allowed to submit mail\n"]                                                
+                                                                                
+  In ProcessStream.php line 77:                                                 
+                                                                                
+    Process failed with exit code 75: sendmail: fatal: User visitmp(58520) is   
+  not allowed to submit mail                                                    
+                                                                                
+  mailer:test [--from FROM] [--subject SUBJECT] [--body BODY] [--transport      
+  TRANSPORT] [--] <to>                                                          
+                                                                                
+  In ProcessStream.php line 77:                                                 
+                                                                                
+    Process failed with exit code -1: sendmail: fatal: User visitmp(58520) is   
+  not allowed to submit mail                                                    
+                                                                                
+  mailer:test [--from FROM] [--subject SUBJECT] [--body BODY] [--transport      
+  TRANSPORT] [--] <to>                                                          
+
+● This error is different: native:// reached OVH's mail program, and OVH refused
+  to send for the hosting user visitmp. OVH doesn't let your SSH session send
+  mail. That's normal on OVH shared hosting. It means this SSH test can't tell
+  you whether mail works for the website or the cron job.
+
+  So far we know:
+
+  ┌──────────────────┬───────────────────┬──────────────────────────────────┐
+  │   Mail setting   │     Over SSH      │        Website / OVH cron        │
+  ├──────────────────┼───────────────────┼──────────────────────────────────┤
+  │ smtp://...:465   │ refused at the    │ very probably blocked the same   │
+  │                  │ network level     │ way                              │
+  ├──────────────────┼───────────────────┼──────────────────────────────────┤
+  │ native://default │ user not allowed  │ should work; this is how OVH     │
+  │                  │ to send           │ expects PHP sites to send mail   │
+  └──────────────────┴───────────────────┴──────────────────────────────────┘
+
+  I'm fairly confident about the native:// column, but not certain. Here's how
+  to check:
+
+  1. In .env.local at the project root, set:
+  MAILER_DSN=native://default
+     Then clear the cache: php bin/console cache:clear.
+  2. Test from the website by sending a test mail from the admin page
+     mercredi_admin_mail_debug. If it arrives, the website can send mail.
+  3. Test from the cron: re-enable the OVH task and wait for the next run. Then
+     check var/log/cron.log and var/log/cron-cron-facture.last.log. With the new
+     bootstrap, a mail error will show up in full, along with which PHP mode
+     (CLI or CGI) OVH used.
+
+  If the cron still fails, it would help to have a script that only sends one
+  test mail. You could point a temporary OVH task at it and get an answer in one
+  run, without waiting for invoices. Do you want me to add it (for example
+  bin/cron-mailtest.php)? I'd also change DEPLOY.md to say "use native://default
+  on OVH; SMTP and SSH tests don't work", and commit that with the bootstrap
+  fix.
+
+✻ Crunched for 13s · done 4:21 PM
+
+❯ yes add cron-mailtest and commit                                              
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The sender and recipient come from MERCREDI_FROM, so no address goes into the
+  repo. To read it after .env is loaded, run_cron will also accept a closure:
+
+● Bash(python3 - <<'EOF'
+      p='bin/cron-bootstrap.php'…)
+  ⎿  No syntax errors detected in bin/cron-bootstrap.php
+     No syntax errors detected in bin/cron-mailtest.php
+     [2026-11-14 16:26:14] START cron-mailtest | PHP 8.5.12 (cli) | memory_
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated bin/cron-bootstrap.php (+7 -2)
+      25  use Symfony\Component\Dotenv\Dotenv;
+      26  
+      27  /**
+      28 - * @param array<string, mixed> $arguments arguments of the cons
+         -ole command, 'command' included                                
+      28 + * @param array<string, mixed>|\Closure(): array<string, mixed>
+         + $arguments arguments of the console command,                  
+      29 + *                                                             
+         +  'command' included; a closure is called once                 
+      30 + *                                                             
+         +  the .env files are loaded (to read env vars)                 
+      31   */
+      30 -function run_cron(string $name, array $arguments): never       
+      32 +function run_cron(string $name, array|\Closure $arguments): nev
+         +er                                                             
+      33  {
+      34      $projectDir = dirname(__DIR__);
+      35      $logDir = $projectDir.'/var/log';
+     ...
+      117      try {
+      118          require $projectDir.'/vendor/autoload.php';
+      119          (new Dotenv())->bootEnv($projectDir.'/.env');
+      120 +        if ($arguments instanceof \Closure) {                 
+      121 +            $arguments = $arguments();                        
+      122 +        }                                                     
+      123          $line(sprintf('APP_ENV=%s APP_DEBUG=%s command=%s', $_
+           SERVER['APP_ENV'], $_SERVER['APP_DEBUG'] ? '1' : '0', json_enc
+           ode($arguments)));
+      124  
+      125          $kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SER
+           VER['APP_DEBUG']);
+  ⎿  Created bin/cron-mailtest.php (+22 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +/**                                                            
+       4 + * Test d'envoi de mail dans les conditions réelles d'une « Tâc
+         +he planifiée (CRON) »                                          
+       5 + * d'OVH mutualisé (même binaire PHP, même utilisateur). Les te
+         +sts lancés en SSH ne                                           
+       6 + * sont pas représentatifs : OVH y interdit l'envoi (« not allo
+         +wed to submit mail »).                                         
+       7 + *                                                             
+       8 + * Envoie un mail de test de MERCREDI_FROM vers MERCREDI_FROM a
+         +vec le MAILER_DSN                                              
+       9 + * configuré. Créer une tâche temporaire pointant vers ce fichi
+         +er, attendre une                                               
+      10 + * exécution, lire var/log/cron.log et var/log/cron-cron-mailte
+         +st.last.log, puis                                              
+      11 + * supprimer la tâche.                                         
+      12 + */                                                            
+      13 +                                                               
+      14 +require __DIR__.'/cron-bootstrap.php';                         
+      15 +                                                               
+      16 +run_cron('cron-mailtest', static fn (): array => [             
+      17 +    'command' => 'mailer:test',                                
+      18 +    'to' => $_SERVER['MERCREDI_FROM'],                         
+      19 +    '--from' => $_SERVER['MERCREDI_FROM'],                     
+      20 +    '--subject' => 'Test mail CRON '.date('Y-m-d H:i:s'),      
+      21 +    '--body' => sprintf('Envoyé par bin/cron-mailtest.php (PHP 
+         +%s, %s).', \PHP_VERSION, \PHP_SAPI),                           
+      22 +]);                                                            
+
+● Works locally, sending through the null:// transport. Now the DEPLOY.md notes:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='DEPLOY.md'…)
+  ⎿  OK (4 tests, 16 assertions)
+      M DEPLOY.md
+      M bin/cron-bootstrap.php
+     … +3 lines (ctrl+o to expand)
+  ⎿  Updated DEPLOY.md (+10 -0)
+      114  
+      115  - `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.
+           env.local` on the
+      116    server, as for the website.
+      117 +- On OVH shared hosting, use `MAILER_DSN=native://default` (PH
+          +P `mail()`,                                                   
+      118 +  relayed by OVH). Outgoing SMTP connections (`smtp://smtp.mai
+          +l.ovh.net:465`)                                               
+      119 +  are refused ("Connection refused"), and any mail sent from a
+          +n SSH session is                                              
+      120 +  rejected ("User ... is not allowed to submit mail"), so `bin
+          +/console                                                      
+      121 +  mailer:test` over SSH proves nothing. The sender (`MERCREDI_
+          +FROM`) must be an                                             
+      122 +  address of a domain hosted at OVH.                          
+      123 +- To test mail in real cron conditions, create a temporary tas
+          +k running                                                     
+      124 +  `bin/cron-mailtest.php`: it sends a test mail from and to `M
+          +ERCREDI_FROM`.                                                
+      125 +  Check `var/log/cron.log` and `var/log/cron-cron-mailtest.las
+          +t.log` after one                                              
+      126 +  run, then delete the task.                                  
+      127  - Each run sends at most 40 invoices per `FactureCron`, and a 
+           `FactureCron` is
+      128    processed at most once every 60 minutes; it is marked done w
+           hen no invoice is
+      129    left to send.
+
+  Ran 1 shell command (ctrl+o to expand)  ⎿  PostToolUse:Bash says: Tip: Run /ultrareview before you push to catch bugs 
+     with a cloud-based multi-agent review — 3 free reviews left.
+
+● The commit is smaller than I expected, so I'll check whether my earlier
+  changes were already committed:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● You had already committed the bootstrap fix as e0f8430, so my commit message
+  described work that wasn't in it. I'm rewording my own just-made commit, which
+  hasn't been pushed:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I added bin/cron-mailtest.php and committed it as 6f26c8f. It hasn't been
+  pushed. You had already committed the logging fix yourself as e0f8430, so I
+  reworded my commit message to describe only what's in it:
+
+  - bin/cron-mailtest.php: sends one test mail from and to the MERCREDI_FROM
+    address, using whatever MAILER_DSN is set. No address is written in the
+    code. I ran it locally: it finished with exit=0 and wrote its lines to
+    var/log/cron.log. Locally mail goes to the null://null transport, so nothing
+    was really sent and this says nothing about OVH yet.
+  - bin/cron-bootstrap.php: run_cron() now also accepts a function for the
+    command arguments, which runs after .env is loaded. That's how the test
+    script reads MERCREDI_FROM.
+  - DEPLOY.md: says to use MAILER_DSN=native://default on OVH shared hosting,
+    that SMTP and SSH tests don't work there, and how to use the test script.
+
+  The 4 command tests pass. I left your untracked file
+  2026-11-14-112141-local-command-caveat...txt out of the commit.
+
+  On OVH:
+  1. Deploy, and set MAILER_DSN=native://default in the root .env.local. Then
+     run php bin/console cache:clear.
+  2. Check that MERCREDI_FROM is an address on a domain hosted at OVH.
+  3. Create a temporary task for bin/cron-mailtest.php and wait for one run.
+     Then read var/log/cron.log and var/log/cron-cron-mailtest.last.log, and
+     check that the mail arrived.
+  4. If it worked, delete the test task and re-enable cron-facture.
+
+✻ Cogitated for 48s · done 4:26 PM
+
+❯ give me a command or a sql to inject a sample of async mail in                
+  messenger_messages to check if cron works                                     
+
+  Read 1 file, listed 1 directory (ctrl+o to expand)
+
+● I'll add a --queue option to the existing mercredi:test-mail command so it
+  sends through BulkMailer and the async queue, avoiding a hand-written
+  PHP-serialized envelope. · summary
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● The existing command is broken: it calls getEmailSenderAddress(), which its
+  trait doesn't define. I'll rewrite it with constructor injection, using
+  MERCREDI_FROM as the sender:
+
+● Write(src/AcMarche/Mercredi/src/Command/MailTestCommand.php)
+  ⎿  Added 43 lines, removed 15 lines
+       2  
+       3  namespace AcMarche\Mercredi\Command;
+       4  
+       5 -use AcMarche\Mercredi\Mailer\InitMailerTrait;                  
+       5 +use AcMarche\Mercredi\Mailer\BulkMailer;                       
+       6 +use Symfony\Bridge\Twig\Mime\TemplatedEmail;                   
+       7  use Symfony\Component\Console\Attribute\AsCommand;
+       8  use Symfony\Component\Console\Command\Command;
+       9  use Symfony\Component\Console\Input\InputArgument;
+      10  use Symfony\Component\Console\Input\InputInterface;
+      11 +use Symfony\Component\Console\Input\InputOption;               
+      12  use Symfony\Component\Console\Output\OutputInterface;
+      13  use Symfony\Component\Console\Style\SymfonyStyle;
+      14 +use Symfony\Component\DependencyInjection\Attribute\Autowire;  
+      15  use Symfony\Component\Mailer\Exception\TransportExceptionInterf
+          ace;
+      13 -use Symfony\Component\Mime\Email;                              
+      16 +use Symfony\Component\Mailer\MailerInterface;                  
+      17  
+      18  #[AsCommand(
+      19      name: 'mercredi:test-mail',
+      17 -    description: 'Test envoie mail'                            
+      20 +    description: 'Envoie un mail de test, directement ou via la
+         + file "async" (--queue) traitée par bin/cron-messenger.php'    
+      21  )]
+      22  class MailTestCommand extends Command
+      23  {
+      21 -    use InitMailerTrait;                                       
+      24 +    public function __construct(                               
+      25 +        private readonly MailerInterface $mailer,              
+      26 +        private readonly BulkMailer $bulkMailer,               
+      27 +        #[Autowire('%env(MERCREDI_FROM)%')]                    
+      28 +        private readonly string $from,                         
+      29 +    ) {                                                        
+      30 +        parent::__construct();                                 
+      31 +    }                                                          
+      32  
+      33      protected function configure(): void
+      34      {
+      35          $this
+      26 -            ->addArgument('to', InputArgument::REQUIRED, 'Desti
+         -nataire');                                                     
+      36 +            ->addArgument('to', InputArgument::REQUIRED, 'Desti
+         +nataire')                                                      
+      37 +            ->addOption('queue', null, InputOption::VALUE_NONE,
+         + 'Mettre le mail dans la file "async" (table messenger_messages
+         +) au lieu de l\'envoyer')                                      
+      38 +            ->addOption('count', null, InputOption::VALUE_REQUI
+         +RED, 'Nombre de mails à mettre en file (avec --queue)', 1);    
+      39      }
+      40  
+      41      protected function execute(InputInterface $input, OutputInt
+          erface $output): int
+      42      {
+      43          $io = new SymfonyStyle($input, $output);
+      44          $to = $input->getArgument('to');
+      45 +        $queue = $input->getOption('queue');                   
+      46 +        $count = max(1, (int) $input->getOption('count'));     
+      47  
+      34 -        $message = new Email();                                
+      35 -        $message->subject('Test applicaiton mercredi');        
+      36 -        $message->from($this->getEmailSenderAddress());        
+      37 -        $message->to($to);                                     
+      38 -        $message->text('Coucou, mail de test');                
+      48 +        if (!$queue) {                                         
+      49 +            try {                                              
+      50 +                $this->mailer->send($this->createEmail($to, 'di
+         +rect'));                                                       
+      51 +            } catch (TransportExceptionInterface $e) {         
+      52 +                $io->error('Erreur lors de l\'envoi: '.$e->getM
+         +essage());                                                     
+      53  
+      40 -        try {                                                  
+      41 -            $this->sendMail($message);                         
+      42 -            $io->success('Le mail a bien été envoyé.');        
+      43 -        } catch (TransportExceptionInterface $e) {             
+      44 -            $io->error('Erreur lors de l envoie: '.$e->getMessa
+         -ge());                                                         
+      54 +                return Command::FAILURE;                       
+      55 +            }                                                  
+      56 +            $io->success(\sprintf('Mail envoyé à %s.', $to));  
+      57 +                                                               
+      58 +            return Command::SUCCESS;                           
+      59          }
+      60  
+      61 +        for ($i = 1; $i <= $count; ++$i) {                     
+      62 +            $this->bulkMailer->queue($this->createEmail($to, \s
+         +printf('file async %d/%d', $i, $count)), [$to]);               
+      63 +        }                                                      
+      64 +        $io->success(\sprintf('%d mail(s) pour %s mis dans la f
+         +ile "async". Ils partiront au prochain passage de bin/cron-mess
+         +enger.php.', $count, $to));                                    
+      65 +                                                               
+      66          return Command::SUCCESS;
+      67      }
+      68 +                                                               
+      69 +    private function createEmail(string $to, string $mode): Tem
+         +platedEmail                                                    
+      70 +    {                                                          
+      71 +        return (new TemplatedEmail())                          
+      72 +            ->from($this->from)                                
+      73 +            ->to($to)                                          
+      74 +            ->subject(\sprintf('Test application mercredi (%s) 
+         +%s', $mode, date('Y-m-d H:i:s')))                              
+      75 +            ->text(\sprintf("Mail de test (%s), créé le %s.\n",
+         + $mode, date('Y-m-d H:i:s')));                                 
+      76 +    }                                                          
+      77  }
+
+● Now a test that checks the command puts the mail on the async queue (using the
+  in-memory transport):
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(cat > tests/Command/MailTestCommandTest.php <<'EOF'
+      <?php…)
+  ⎿  /var/www/atl/vendor/symfony/dependency-injection/Compiler/DefinitionEr
+     rorExceptionPass.php:48
+     /var/www/atl/vendor/symfony/dependency-injection/Compiler/Compiler.php
+     … +18 lines (ctrl+o to expand)
+  ⎿  Created tests/Command/MailTestCommandTest.php (+82 -0)
+       1 +<?php                                                          
+       2 +                                                               
+       3 +namespace App\Tests\Command;                                   
+       4 +                                                               
+       5 +use AcMarche\Mercredi\Command\MailTestCommand;                 
+       6 +use AcMarche\Mercredi\Mailer\BulkMailer;                       
+       7 +use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;        
+       8 +use Symfony\Component\Console\Command\Command;                 
+       9 +use Symfony\Component\Console\Tester\CommandTester;            
+      10 +use Symfony\Component\Mailer\Exception\TransportException;     
+      11 +use Symfony\Component\Mailer\MailerInterface;                  
+      12 +use Symfony\Component\Mailer\Messenger\SendEmailMessage;       
+      13 +use Symfony\Component\Messenger\Envelope;                      
+      14 +use Symfony\Component\Messenger\MessageBusInterface;           
+      15 +use Symfony\Component\Messenger\Stamp\TransportNamesStamp;     
+      16 +use Symfony\Component\Mime\BodyRendererInterface;              
+      17 +use Symfony\Component\Mime\Email;                              
+      18 +                                                               
+      19 +final class MailTestCommandTest extends KernelTestCase         
+      20 +{                                                              
+      21 +    /** @var list<Envelope> */                                 
+      22 +    private array $envelopes = [];                             
+      23 +                                                               
+      24 +    public function testQueuesMailsOnTheAsyncTransport(): void 
+      25 +    {                                                          
+      26 +        $mailer = $this->createMock(MailerInterface::class);   
+      27 +        $mailer->expects(self::never())->method('send');       
+      28 +                                                               
+      29 +        $tester = $this->createTester($mailer);                
+      30 +                                                               
+      31 +        self::assertSame(Command::SUCCESS, $tester->execute(['t
+         +o' => 'parent@example.com', '--queue' => true, '--count' => 3])
+         +);                                                             
+      32 +        self::assertCount(3, $this->envelopes);                
+      33 +        foreach ($this->envelopes as $envelope) {              
+      34 +            self::assertSame(['async'], $envelope->last(Transpo
+         +rtNamesStamp::class)->getTransportNames());                    
+      35 +            $message = $envelope->getMessage();                
+      36 +            self::assertInstanceOf(SendEmailMessage::class, $me
+         +ssage);                                                        
+      37 +            self::assertSame('parent@example.com', $message->ge
+         +tMessage()->getTo()[0]->getAddress());                         
+      38 +            self::assertSame('ecole@example.com', $message->get
+         +Message()->getFrom()[0]->getAddress());                        
+      39 +        }                                                      
+      40 +    }                                                          
+     … 42 more lines (ctrl+o to expand)
+  ⎿  (timeout 5m)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● This error is in FactureEmailFactory, a file I didn't touch. I'll check
+  whether it was changed in the working tree:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The container error was already there before my change (I checked by stashing
+  my edits). It also breaks the invoice cron. I'll find where the bundle binds
+  its arguments:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Commit aef38e7 removed the #[Autowire] attribute but left the $emailsFacture
+  argument, which breaks the container and the website and cron jobs; I'm
+  removing that unused argument now. · summary
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Update(src/AcMarche/Mercredi/src/Mailer/Factory/FactureEmailFactory.php)
+  ⎿  Removed 1 line
+      27          private FacturePdfPresenceInterface $facturePdfPresence
+          ,
+      28          private FactureFactory $factureFactory,
+      29          private FacturePdfFactoryTrait $facturePdfFactory,
+      30 -        private string $emailsFacture,                         
+      30      ) {
+      31      }
+      32  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 31 tests pass. PHPUnit printed one notice, so I'll check what it is:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I made mercredi:test-mail --queue, which puts test mails in the async queue. I
+  haven't committed anything yet. On the way I found that your commit aef38e7
+  ("remove factura email copies") broke the whole app, and I fixed it.
+
+  The broken container: that commit removed the #[Autowire] attribute but left
+  the string $emailsFacture argument in FactureEmailFactory. Symfony can't build
+  its services without it, so the website and both cron jobs fail with "Cannot
+  autowire service ... FactureEmailFactory". The argument isn't used anymore, so
+  I removed it. lint:container passes again, and so do all 31 tests. If aef38e7
+  is already deployed, deploy this fix before re-enabling the crons.
+
+  The test command: mercredi:test-mail was broken too. It called a method its
+  trait doesn't have. I rewrote it to send from MERCREDI_FROM and added --queue
+  and --count. It now returns an error code when sending fails. A new test,
+  tests/Command/MailTestCommandTest.php, covers queueing, sending directly and a
+  failed send.
+
+  To check the queue cron on OVH:
+
+  1. Queue some mails over SSH. This only writes to the database and sends
+     nothing, so OVH's SSH block on mail doesn't apply:
+  php bin/console mercredi:test-mail jfsenechal@gmail.com --queue --count=3
+  2. Check that they're in the queue:
+  php bin/console messenger:stats
+     Or in SQL:
+  SELECT id, queue_name, created_at, available_at, delivered_at
+  FROM messenger_messages ORDER BY id DESC LIMIT 10;
+  3. Wait for the next run of bin/cron-messenger.php. Mails that are sent
+     disappear from the table. A mail that still fails after 3 retries moves to
+     queue_name = 'failed', and you can see it with:
+  php bin/console messenger:failed:show
+     The reason for a failure is in var/log/cron.log and
+     var/log/cron-cron-messenger.last.log.
+
+  I didn't give you a raw SQL INSERT, on purpose. The body column holds a
+  serialized PHP object, and a hand-written one would break as soon as the
+  Symfony version changes.
+
+  Without --queue, php bin/console mercredi:test-mail <to> sends one mail
+  directly. Over SSH on OVH that's still refused, as before.
+
+  Should I commit the container fix and the command together, or as two separate
+  commits?
+
+✻ Sautéed for 1m 59s · done 6:52 PM
+
+❯ hp bin/console mercredi:test-mail jfsenechal@gmail.com --queue --count=3      
+  ArgumentCountError {#275                                                      
+    #message: "Too few arguments to function                                    
+  AcMarche\Mercredi\Command\MailTestCommand::__construct(), 0 passed in         
+  /home/visitmp/c3i6yq57j2/var/cache/prod/ContainerDqmWKzL/getMailTestCommandSe 
+  rvice.php on line 21 and exactly 3 expected"                                  
+    #code: 0                                                                    
+    #file: "/home/visitmp/c3i6yq57j2/src/AcMarche/Mercredi/src/Command/MailTest 
+  Command.php"                                                                  
+    #line: 25                                                                   
+    trace: {                                                                    
+      /home/visitmp/c3i6yq57j2/src/AcMarche/Mercredi/src/Command/MailTestComman 
+  d.php:25 {                                                                    
+        AcMarche\Mercredi\Command\MailTestCommand->__construct(MailerInterface  
+  $mailer, BulkMailer $bulkMailer, string $from)^                               
+        › public function __construct(                                          
+        ›     private readonly MailerInterface $mailer,                         
+        ›     private readonly BulkMailer $bulkMailer,                          
+      }                                                                         
+      /home/visitmp/c3i6yq57j2/var/cache/prod/ContainerDqmWKzL/getMailTestComma 
+  ndService.php:21 { …}                                                         
+      /home/visitmp/c3i6yq57j2/var/cache/prod/ContainerDqmWKzL/App_KernelProdCo 
+  ntainer.php:228 { …}                                                          
+      /home/visitmp/c3i6yq57j2/var/cache/prod/ContainerDqmWKzL/getMailTestComma 
+  nd_LazyService.php:21 { …}                                                    
+                                                                                
+  /home/visitmp/c3i6yq57j2/vendor/symfony/console/Command/LazyCommand.php:189 { 
+  …}                                                                            
+      /home/visitmp/c3i6yq57j2/vendor/symfony/console/Application.php:376 { …}  
+      /home/visitmp/c3i6yq57j2/vendor/symfony/framework-bundle/Console/Applicat 
+  ion.php:86 { …}                                                               
+      /home/visitmp/c3i6yq57j2/vendor/symfony/console/Application.php:219 { …}  
+      /home/visitmp/c3i6yq57j2/vendor/symfony/runtime/Runner/Symfony/ConsoleApp 
+  licationRunner.php:49 { …}                                                    
+      /home/visitmp/c3i6yq57j2/vendor/autoload_runtime.php:32 { …}              
+      /home/visitmp/c3i6yq57j2/bin/console:15 { …}                              
+    }                                                                           
+  }                                                                             
+                                                                                
+  Fatal error: Uncaught Symfony\Component\Mailer\Exception\TransportException:  
+  Process failed with exit code -1: sendmail: fatal: User visitmp(58520) is not 
+  allowed to submit mail                                                        
+   in /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/Smtp/Stream/Proc 
+  essStream.php:77                                                              
+  Stack trace:                                                                  
+  #0 /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/SendmailTransport 
+  .php(123):                                                                    
+  Symfony\Component\Mailer\Transport\Smtp\Stream\ProcessStream->terminate()     
+  #1 /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/AbstractTransport 
+  .php(90): Symfony\Component\Mailer\Transport\SendmailTransport->doSend(Object 
+  (Symfony\Component\Mailer\SentMessage))                                       
+  #2 /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/SendmailTransport 
+  .php(78): Symfony\Component\Mailer\Transport\AbstractTransport->send(Object(S 
+  ymfony\Component\Mime\Email),                                                 
+  Object(Symfony\Component\Mailer\DelayedEnvelope))                             
+  #3                                                                            
+  /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/Transports.php(51):  
+  Symfony\Component\Mailer\Transport\SendmailTransport->send(Object(Symfony\Com 
+  ponent\Mime\Email), NULL)                                                     
+  #4 /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Messenger/MessageHandler.ph 
+  p(29): Symfony\Component\Mailer\Transport\Transports->send(Object(Symfony\Com 
+  ponent\Mime\Email), NULL)                                                     
+  #5 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/HandleMessage 
+  Middleware.php(165): Symfony\Component\Mailer\Messenger\MessageHandler->__inv 
+  oke(Object(Symfony\Component\Mailer\Messenger\SendEmailMessage))              
+  #6 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/HandleMessage 
+  Middleware.php(101): Symfony\Component\Messenger\Middleware\HandleMessageMidd 
+  leware->callHandler(Object(Closure),                                          
+  Object(Symfony\Component\Mailer\Messenger\SendEmailMessage), NULL, NULL)      
+  #7 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/SendMessageMi 
+  ddleware.php(78): Symfony\Component\Messenger\Middleware\HandleMessageMiddlew 
+  are->handle(Object(Symfony\Component\Messenger\Envelope),                     
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #8 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/DeduplicateMi 
+  ddleware.php(28): Symfony\Component\Messenger\Middleware\SendMessageMiddlewar 
+  e->handle(Object(Symfony\Component\Messenger\Envelope),                       
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #9 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/FailedMessage 
+  ProcessingMiddleware.php(32): Symfony\Component\Messenger\Middleware\Deduplic 
+  ateMiddleware->handle(Object(Symfony\Component\Messenger\Envelope),           
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #10 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/DecodeFailed 
+  MessageMiddleware.php(42): Symfony\Component\Messenger\Middleware\FailedMessa 
+  geProcessingMiddleware->handle(Object(Symfony\Component\Messenger\Envelope),  
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #11 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/DispatchAfte 
+  rCurrentBusMiddleware.php(78): Symfony\Component\Messenger\Middleware\DecodeF 
+  ailedMessageMiddleware->handle(Object(Symfony\Component\Messenger\Envelope),  
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #12 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/RejectRedeli 
+  veredMessageMiddleware.php(40):                                               
+  Symfony\Component\Messenger\Middleware\DispatchAfterCurrentBusMiddleware->han 
+  dle(Object(Symfony\Component\Messenger\Envelope),                             
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #13 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/AddBusNameSt 
+  ampMiddleware.php(35): Symfony\Component\Messenger\Middleware\RejectRedeliver 
+  edMessageMiddleware->handle(Object(Symfony\Component\Messenger\Envelope),     
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #14 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/Middleware/AddDefaultSt 
+  ampsMiddleware.php(33): Symfony\Component\Messenger\Middleware\AddBusNameStam 
+  pMiddleware->handle(Object(Symfony\Component\Messenger\Envelope),             
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #15 /home/visitmp/c3i6yq57j2/vendor/symfony/messenger/MessageBus.php(69):     
+  Symfony\Component\Messenger\Middleware\AddDefaultStampsMiddleware->handle(Obj 
+  ect(Symfony\Component\Messenger\Envelope),                                    
+  Object(Symfony\Component\Messenger\Middleware\StackMiddleware))               
+  #16 /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Mailer.php(62):            
+  Symfony\Component\Messenger\MessageBus->dispatch(Object(Symfony\Component\Mai 
+  ler\Messenger\SendEmailMessage), Array)                                       
+  #17 /home/visitmp/c3i6yq57j2/vendor/symfony/monolog-bridge/Handler/MailerHand 
+  ler.php(84):                                                                  
+  Symfony\Component\Mailer\Mailer->send(Object(Symfony\Component\Mime\Email))   
+  #18 /home/visitmp/c3i6yq57j2/vendor/symfony/monolog-bridge/Handler/MailerHand 
+  ler.php(67): Symfony\Bridge\Monolog\Handler\MailerHandler->send('<h1          
+  style="back...', Array)                                                       
+  #19 /home/visitmp/c3i6yq57j2/vendor/monolog/monolog/src/Monolog/Handler/Dedup 
+  licationHandler.php(96):                                                      
+  Symfony\Bridge\Monolog\Handler\MailerHandler->handleBatch(Array)              
+  #20 /home/visitmp/c3i6yq57j2/vendor/monolog/monolog/src/Monolog/Handler/Buffe 
+  rHandler.php(113): Monolog\Handler\DeduplicationHandler->flush()              
+  #21 [internal function]: Monolog\Handler\BufferHandler->close()               
+  #22 {main}                                                                    
+    thrown in /home/visitmp/c3i6yq57j2/vendor/symfony/mailer/Transport/Smtp/Str 
+  eam/ProcessStream.php on line 77                                              
+  AILER_DSN=native://default set on ovh server                                  
+
+● There are two separate problems here. First, the prod cache is stale. Second,
+  the error-mail logger crashes the process.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Monolog's email handler can crash the process at shutdown if the error email
+  fails to send, which counts as a failed cron run. I'm wrapping that handler in
+  whatfailuregroup so a failed email can't take the process down. · summary
+
+● Update(config/packages/monolog.yaml)
+  ⎿  Added 6 lines, removed 1 line
+      42                  buffer_size: 50 # How many messages should be s
+          aved? Prevent memory leaks
+      43              grouped:
+      44                  type: group
+      45 -                members: [ nested, deduplicated ]              
+      45 +                members: [ nested, mail_safe ]                 
+      46 +            # A failing error mail (SMTP refused, OVH forbids m
+         +ail from SSH...) must not                                      
+      47 +            # crash the request or the cron: the error is alrea
+         +dy written by "nested".                                        
+      48 +            mail_safe:                                         
+      49 +                type: whatfailuregroup                         
+      50 +                members: [ deduplicated ]                      
+      51              # Mail the buffered log to the webmaster when an er
+          ror occurs (same error mailed once per 60 s)
+      52              deduplicated:
+      53                  type: deduplication
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The prod container builds, with the deprecation lines being unrelated noise.
+  Next I'll trigger an error in prod against an unreachable SMTP server, as on
+  OVH, to confirm it no longer crashes. · summary
+  Ran 2 shell commands (ctrl+o to expand)
+
+● You hit two problems. The first one is fixed with one command on the server.
+  For the second, I changed config/packages/monolog.yaml; it isn't committed
+  yet.
+
+  1. ArgumentCountError: the prod cache is stale. The service container in
+  var/cache/prod was compiled from the old MailTestCommand, which had no
+  constructor arguments. The new code was deployed, but that cache was not
+  rebuilt. On OVH, run:
+  php bin/console cache:clear
+  If that command fails too, delete the cache folder: rm -rf var/cache/prod.
+  Clear the cache after every deploy; otherwise the site and the crons keep
+  running on the old container.
+
+  2. Fatal error: ... not allowed to submit mail: the error mail crashes the 
+  process. The command failed and logged an error. In prod, monolog then emails
+  the log to the webmaster. Over SSH, OVH refuses that email, and the exception
+  escapes when PHP shuts down. In a cron job, the same thing would turn any
+  logged error into a failed run, and OVH counts failed runs toward disabling
+  the task.
+
+  I wrapped the email handler in monolog's whatfailuregroup (new mail_safe
+  handler). If the error email can't be sent, the failure is ignored and the
+  error is still written to var/log/prod.log. The prod container builds with
+  this change. My local attempt to reproduce the crash wasn't conclusive: it
+  didn't crash even without the fix, because my setup doesn't hit the same code
+  path as OVH. My confidence comes from Monolog's source:
+  WhatFailureGroupHandler::close() catches exactly the exception in your trace
+  (BufferHandler->close() → DeduplicationHandler->flush()).
+
+  I saw you already committed and merged the earlier changes (4f035f1).
+
+  On OVH, after deploying the monolog change:
+  php bin/console cache:clear
+  php bin/console mercredi:test-mail jfsenechal@gmail.com --queue --count=3
+  php bin/console messenger:stats
+  The queue command only writes to the database, so it works over SSH. You can't
+  test the actual sending over SSH: OVH only allows mail from the website and
+  from scheduled tasks. You'll know it works when the async count in
+  messenger:stats drops to 0 after the next cron-messenger run and the 3 mails
+  arrive.
+
+  Want me to commit the monolog change?
+
+✻ Churned for 1m 3s · done 6:56 PM
+
+❯ after a clear cache [OK] 3 mail(s) pour jfsenechal@gmail.com mis dans la file 
+  "async". Ils partiront au prochain passage de                                 
+        bin/cron-messenger.php.                                                 
+
+● After clearing the cache, the command worked: the 3 test mails are in the
+  async queue.
+
+  Next, check that the queue cron sends them:
+
+  1. Check the queue now. It should show async with 3 messages:
+  php bin/console messenger:stats
+  2. Wait for the next run of bin/cron-messenger.php. Make sure its OVH task is
+     enabled and runs every hour. To avoid waiting, you can start a run from the
+     OVH panel if your plan allows it.
+  3. Read the result after that run:
+  php bin/console messenger:stats
+  tail -3 var/log/cron.log
+  tail -40 var/log/cron-cron-messenger.last.log
+
+  What the result means:
+
+  ┌───────────────────────────────┬─────────────────────────────────────────┐
+  │         What you see          │                 Meaning                 │
+  ├───────────────────────────────┼─────────────────────────────────────────┤
+  │ async at 0, 3 mails in your   │ The cron works and native://default     │
+  │ inbox (check spam too)        │ sends from the cron. Re-enable          │
+  │                               │ cron-facture.                           │
+  ├───────────────────────────────┼─────────────────────────────────────────┤
+  │ async still 3, no START line  │ The task didn't run. Check its path and │
+  │ in cron.log                   │  PHP version in the OVH panel.          │
+  ├───────────────────────────────┼─────────────────────────────────────────┤
+  │ START line, but sapi= or the  │ The cron uses another PHP. Choose the   │
+  │ PHP version differs from your │ project's PHP version in the task       │
+  │  SSH session                  │ settings.                               │
+  ├───────────────────────────────┼─────────────────────────────────────────┤
+  │                               │ Sending was refused even from the cron. │
+  │ The mails moved to failed     │  The reason is in                       │
+  │ (messenger:failed:show)       │ cron-cron-messenger.last.log. Paste it  │
+  │                               │ here.                                   │
+  └───────────────────────────────┴─────────────────────────────────────────┘
+
+  A run lasts up to 55 minutes, so cron.log gets its end line only when the run
+  stops. The START line appears right away.
+
+  The monolog change, which stops a failed error email from crashing the
+  process, is still not committed. Should I commit it so it goes out with your
+  next deploy?
+
+✻ Baked for 6s · done 6:57 PM

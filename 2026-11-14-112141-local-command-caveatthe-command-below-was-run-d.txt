@@ -1,0 +1,760 @@
+ ▐▛███▛█   Claude Code v2.1.323
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   /var/www/atl
+
+
+❯ /clear                                                                        
+
+❯ list action where mails are send.                                             
+
+  Searched for 2 patterns, ran 3 shell commands (ctrl+o to expand)
+
+● Still tracing who triggers the handlers (messages, tuteur/animateur
+  association, facture PDFs).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I found 19 places where the app sends mail: 13 web routes, 4 console commands,
+  and 2 internal paths. Paths below are relative to src/AcMarche/Mercredi/src/.
+
+  Web routes (controllers)
+
+  Route name: mercredi_front_contact
+  Action: Controller/Front/PageController.php:69 contact()
+  Mail sent: Contact form message to the admin
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: app_login_with_email
+  Action: Controller/Front/SecurityController.php:91 loginWithEmail()
+  Mail sent: Login link to the user
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_front_forgot_password_request
+  Action: Controller/Front/ResetPasswordController.php:170 request()
+  Mail sent: Password reset link
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_front_register
+  Action: Controller/Front/RegistrationController.php:69 dispatches
+    RegisterCreated, which runs
+    Registration/MessageHandler/RegisterCreatedHandler.php:50,53
+  Mail sent: "Registration successful" to the user, plus "account created" to
+  the
+    admin
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_parent_enfant_new
+  Action: Controller/Parent/EnfantController.php:77 new()
+  Mail sent: "Child created" to the admin
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_message_new_jour
+  Action: Controller/Admin/MessageController.php:98, then
+    Message/Handler/MessageHandler.php:31
+  Mail sent: Admin message to the parents of one day
+  Sent how: NotificationMailer, one mail per recipient
+  ────────────────────────────────────────
+  Route name: mercredi_message_new_groupescolaire
+  Action: MessageController.php:137
+  Mail sent: Admin message to the parents of a school group
+  Sent how: same
+  ────────────────────────────────────────
+  Route name: mercredi_message_new
+  Action: MessageController.php:164
+  Mail sent: Admin message to the parents
+  Sent how: same
+  ────────────────────────────────────────
+  Route name: mercredi_admin_tuteur_new
+  Action: Controller/Admin/TuteurController.php:83, then
+    AssociationTuteurHandler::handleCreateUserFromTuteur (line 88)
+  Mail sent: New account / welcome mail to the parent
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_admin_parent_enfant_new
+  Action: Controller/Admin/QuickController.php:54, same handler
+  Mail sent: same
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_admin_tuteur_new_from_user and
+    mercredi_user_associate_tuteur
+  Action: TuteurController.php:125 and AssocierParentController.php:41, then
+    AssociationTuteurHandler::handleAssociateTuteur (line 66)
+  Mail sent: Welcome mail, only if sendEmail is ticked
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_user_associate_animateur
+  Action: Controller/Admin/AssocierAnimateurController.php:41, then
+    AssociationAnimateurHandler::handleAssociateAnimateur (line 59)
+  Mail sent: Welcome mail to the animateur, only if sendEmail is ticked
+  Sent how: NotificationMailer
+  ────────────────────────────────────────
+  Route name: mercredi_admin_facture_send_one
+  Action: Controller/Admin/FactureSendController.php:89 sendOneFacture()
+  Mail sent: One invoice with its PDF
+  Sent how: TransportInterface (sent immediately, with a rate limit)
+  ────────────────────────────────────────
+  Route name: mercredi_admin_mail_debug
+  Action: Controller/Admin/MailDebugController.php:39-40
+  Mail sent: Test mail, sent either directly or the same way the app sends
+  Sent how: MailDebugger
+
+  Console commands
+
+  Command: mercredi:facture-send
+  Location: Command/SendFactureCommand.php, then
+    Facture/Handler/FactureCronHandler.php:111 (invoices), :137 (result report)
+    and :147 (alerts)
+  Mail sent: Invoices in batches, the run report to the admin, and error alerts.
+
+    Sent through TransportInterface with a rate limit
+  ────────────────────────────────────────
+  Command: mercredi:health
+  Location: Command/HealthCommand.php:35,58
+  Mail sent: Lists of orphan children and archived parents, to the admin
+  ────────────────────────────────────────
+  Command: mercredi:facture-pdf
+  Location: Command/PdfFactureCommand.php:47
+  Mail sent: Alert when the date format is wrong
+  ────────────────────────────────────────
+  Command: mercredi:test-mail
+  Location: Command/MailTestCommand.php:41
+  Mail sent: Test mail, through InitMailerTrait::sendMail
+
+  Internal paths
+
+  - Facture/Render/FacturePdfPresenceHotton.php:129 emails the admin when the QR
+    code can't be generated. This happens whenever invoice PDFs are rendered
+    for Hotton.
+  - mercredi_admin_facture_send_all_by_mail and
+    mercredi_admin_facture_cron_launch only set up a FactureCron. The mails
+    themselves go out later through mercredi:facture-send.
+
+  Some things you might want to clean up:
+  - Invoices go out directly through TransportInterface. Everything else goes
+    through NotificationMailer, then Notifier, then Mailer, so those mails can
+    end up in the Messenger queue if it's set up that way.
+  - AssociationAnimateurHandler::handleCreateUserFromAnimateur (line 81) sends a
+    mail, but nothing seems to call it.
+  - Controller/Admin/DefaultController.php uses InitMailerTrait but never sends
+    anything.
+  - In RegisterCreatedHandler.php:53, the "account created" admin message is
+    sent with $user->getEmail() as the recipient. That looks like it may go to
+    the user rather than to the admin.
+
+✻ Sautéed for 45s · done 10:51 AM
+
+❯ fix the RegisterCreatedHandler admin recipient                                
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The fix: drop the user's email so NotificationMailer falls back to the
+  organisation contact address, like the other admin mails do.
+
+● Update(src/AcMarche/Mercredi/src/Registration/MessageHandler/RegisterCreatedHa
+        ndler.php)
+  ⎿  Added 1 line, removed 1 line
+      50          $this->notificationMailer->sendAsEmailNotification($mes
+          sage, $user->getEmail());
+      51  
+      52          $message = $this->registrationMailerFactory->generateMe
+          ssageToAdminAccountCreated($user);
+      53 -        $this->notificationMailer->sendAsEmailNotification($mes
+         -sage, $user->getEmail());                                      
+      53 +        $this->notificationMailer->sendAsEmailNotification($mes
+         +sage);                                                         
+      54          $flashBag = $this->requestStack->getSession()?->getFlas
+          hBag();
+      55          $flashBag->add('success', 'Votre compte a bien été créé
+          , consultez votre boite mail');
+      56      }
+
+  Read 1 file, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● I fixed the line. src/AcMarche/Mercredi/src/Registration/MessageHandler/Regist
+  erCreatedHandler.php:53 now reads:
+
+  $message =
+  $this->registrationMailerFactory->generateMessageToAdminAccountCreated($user);
+  $this->notificationMailer->sendAsEmailNotification($message);
+
+  With no address passed, NotificationMailer uses the organisation contact
+  address (getEmailContact()), like the other admin notifications.
+
+  This was mostly a misleading line, not a real bug.
+  generateMessageToAdminAccountCreated() already sets
+  ->to($this->getEmailContact()). Symfony's EmailChannel only uses the address
+  you pass in when the message has no To header, so the admin was already
+  getting this mail. The fix makes the code say what it does and stops it
+  breaking if the factory ever drops its to().
+
+  The file passes php -l. I didn't add a test: NotificationMailer is final and
+  the handler needs a saved user and a session, so a proper test would mean a
+  functional test of the registration flow. I can write one if you want.
+
+  Something more serious in config/packages/mailer.yaml: the when@prod block
+  sets
+
+  envelope:
+      recipients: [ 'webmaster@marche.be' ]
+
+  That redirects every mail in production to webmaster@marche.be: invoices,
+  password resets, login links and parent messages. The To header stays the
+  same, but real recipients never get anything. That's fine in when@dev, but in
+  prod it looks like a leftover from testing. If it is, remove the prod block.
+  SetToListener with MAILER_RECIPIENTS already does the same thing and can be
+  switched on per environment. Should I remove it?
+
+✻ Brewed for 30s · done 10:54 AM
+
+❯ by default mail must be send directly, not async, except for list of multiple 
+  mail in one times, like send facture, or send a message to all parent         
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● I'm routing all mail directly instead of through async, adding a BulkMailer
+  that queues mass mailings on async with rate limiting, and leaving invoices on
+  their existing rate-limited cron. Checking a few things first. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Write(src/AcMarche/Mercredi/src/Mailer/BulkMailer.php)
+  ⎿  Wrote 47 lines to src/AcMarche/Mercredi/src/Mailer/BulkMailer.php
+      1 <?php
+      2 
+      3 namespace AcMarche\Mercredi\Mailer;
+      4 
+      5 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+      6 use Symfony\Component\Mailer\Messenger\SendEmailMessage;
+      7 use Symfony\Component\Messenger\MessageBusInterface;
+      8 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
+      9 use Symfony\Component\Mime\BodyRendererInterface;
+     … +38 lines (ctrl+o to expand)
+
+● Write(src/AcMarche/Mercredi/src/Message/Handler/MessageHandler.php)
+  ⎿  Added 10 lines, removed 15 lines
+       3  namespace AcMarche\Mercredi\Message\Handler;
+       4  
+       5  use AcMarche\Mercredi\Entity\Message;
+       6 -use AcMarche\Mercredi\Mailer\InitMailerTrait;                  
+       7 -use AcMarche\Mercredi\Mailer\NotificationMailer;               
+       6 +use AcMarche\Mercredi\Mailer\BulkMailer;                       
+       7  use AcMarche\Mercredi\Message\Factory\EmailFactory;
+       8  use AcMarche\Mercredi\Message\Repository\MessageRepository;
+      10 -use Symfony\Component\HttpFoundation\RequestStack;             
+       9  
+      12 -final class MessageHandler                                     
+      10 +final readonly class MessageHandler                            
+      11  {
+      14 -    use InitMailerTrait;                                       
+      15 -                                                               
+      12      public function __construct(
+      13          private MessageRepository $messageRepository,
+      14          private EmailFactory $emailFactory,
+      19 -        private NotificationMailer $notificationMailer,        
+      20 -        RequestStack $requestStack                             
+      15 +        private BulkMailer $bulkMailer,                        
+      16      ) {
+      22 -                                                               
+      17      }
+      18  
+      25 -    public function handle(Message $message): void             
+      19 +    /**                                                        
+      20 +     * @return int number of mails queued                      
+      21 +     */                                                        
+      22 +    public function handle(Message $message): int              
+      23      {
+      24          $templatedEmail = $this->emailFactory->create($message)
+          ;
+      25 +        $count = $this->bulkMailer->queue($templatedEmail, $mes
+         +sage->getDestinataires());                                     
+      26  
+      29 -        foreach ($message->getDestinataires() as $addressEmail)
+         - {                                                             
+      30 -            $templatedEmail->to($addressEmail);                
+      31 -            $this->notificationMailer->sendAsEmailNotification(
+         -$templatedEmail, $addressEmail);                               
+      32 -        }                                                      
+      33 -                                                               
+      27          $this->messageRepository->persist($message);
+      28          $this->messageRepository->flush();
+      29 +                                                               
+      30 +        return $count;                                         
+      31      }
+      32  }
+
+● Update(src/AcMarche/Mercredi/src/Message/Factory/EmailFactory.php)
+  ⎿  Added 4 lines, removed 2 lines
+      28           * Pieces jointes.
+      29           */
+      30          if (null !== ($uploadedFile = $message->getFile())) {
+      31 -            $notification->attachFromPath(                     
+      32 -                $uploadedFile->getRealPath(),                  
+      31 +            // Load the content now: the mails are queued and t
+         +he uploaded temp file                                          
+      32 +            // is gone by the time the worker sends them.      
+      33 +            $notification->attach(                             
+      34 +                file_get_contents($uploadedFile->getRealPath())
+         +,                                                              
+      35                  $uploadedFile->getClientOriginalName(),
+      36                  $uploadedFile->getClientMimeType()
+      37              );
+
+● Update(config/packages/messenger.yaml)
+  ⎿  Added 2 lines, removed 1 line
+      20              messenger.bus.default: []
+      21  
+      22          routing:
+      23 -            Symfony\Component\Mailer\Messenger\SendEmailMessage
+         -: async                                                        
+      23 +            # Mails are sent directly (SendEmailMessage is not 
+         +routed). Mass mailings                                         
+      24 +            # are queued explicitly on "async" by AcMarche\Merc
+         +redi\Mailer\BulkMailer.                                        
+      25              Symfony\Component\Notifier\Message\ChatMessage: asy
+          nc
+      26              Symfony\Component\Notifier\Message\SmsMessage: asyn
+          c
+      27  
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Updating the flash so the admin knows the mails are queued, not already sent:
+
+● Bash(f=src/AcMarche/Mercredi/src/Controller/Admin/MessageController.php &&
+      perl -0pi -e "s/\\\$this->messageHandler->handle\(\\\$message\);\n\n(\s+)\
+      \\$this->addFlas…)
+  ⎿  98:            $count = $this->messageHandler->handle($message);
+     100:            $this->addFlash('success', $count.' mail(s) mis en fil
+     e d\'envoi, ils partiront dans les prochaines minutes');
+     … +9 lines (ctrl+o to expand)
+  ⎿  Updated
+     src/AcMarche/Mercredi/src/Controller/Admin/MessageController.php (+6 
+     -6)
+       95          $form = $this->createForm(MessageType::class, $message
+           );
+       96          $form->handleRequest($request);
+       97          if ($form->isSubmitted() && $form->isValid()) {
+       98 -            $this->messageHandler->handle($message);          
+       98 +            $count = $this->messageHandler->handle($message); 
+       99  
+      100 -            $this->addFlash('success', 'Le message a bien été 
+          -envoyé');                                                     
+      100 +            $this->addFlash('success', $count.' mail(s) mis en
+          + file d\'envoi, ils partiront dans les prochaines minutes');  
+      101  
+      102              return $this->redirectToRoute('mercredi_message_in
+           dex');
+      103          }
+     ...
+      134          $form = $this->createForm(MessageType::class, $message
+           );
+      135          $form->handleRequest($request);
+      136          if ($form->isSubmitted() && $form->isValid()) {
+      137 -            $this->messageHandler->handle($message);          
+      137 +            $count = $this->messageHandler->handle($message); 
+      138  
+      139 -            $this->addFlash('success', 'Le message a bien été 
+          -envoyé');                                                     
+      139 +            $this->addFlash('success', $count.' mail(s) mis en
+          + file d\'envoi, ils partiront dans les prochaines minutes');  
+      140  
+      141              return $this->redirectToRoute('mercredi_admin_pres
+           ence_index');
+      142          }
+     ...
+      161          $form = $this->createForm(MessageType::class, $message
+           );
+      162          $form->handleRequest($request);
+      163          if ($form->isSubmitted() && $form->isValid()) {
+      164 -            $this->messageHandler->handle($message);          
+      164 +            $count = $this->messageHandler->handle($message); 
+      165  
+      166 -            $this->addFlash('success', 'Le message a bien été 
+          -envoyé');                                                     
+      166 +            $this->addFlash('success', $count.' mail(s) mis en
+          + file d\'envoi, ils partiront dans les prochaines minutes');  
+      167  
+      168              $this->searchHelper->deleteSearch(SearchHelper::ME
+           SSAGE_INDEX);
+      169  
+
+● Now the tests: update the routing assertion and add a BulkMailer test.
+
+● Update(tests/Mailer/MailDebuggerTest.php)
+  ⎿  Added 2 lines, removed 2 lines
+      54          return self::getContainer()->get('limiter.mailer');
+      55      }
+      56  
+      57 -    public function testReportsThatMailsGoThroughTheAsyncQueue(
+         -): void                                                        
+      57 +    public function testReportsThatMailsAreSentDirectly(): void
+      58      {
+      59 -        self::assertSame(['async'], $this->debugger->mailRoutin
+         -g());                                                          
+      59 +        self::assertSame([], $this->debugger->mailRouting());  
+      60          self::assertStringNotContainsString('secret', $this->de
+          bugger->maskedDsn());
+      61      }
+      62  
+
+● Write(tests/Mailer/BulkMailerTest.php)
+  ⎿  Wrote 53 lines to tests/Mailer/BulkMailerTest.php
+       1 <?php
+       2 
+       3 namespace App\Tests\Mailer;
+       4 
+       5 use AcMarche\Mercredi\Mailer\BulkMailer;
+       6 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+       7 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+       8 use Symfony\Component\Mailer\Messenger\SendEmailMessage;
+       9 use Symfony\Component\Messenger\Envelope;
+      10 use Symfony\Component\Messenger\MessageBusInterface;
+     … +43 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+● The tests pass. Updating the docs (DEPLOY.md and the mail-debug page wording)
+  and running the full suite:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The page already handles empty routing. Now the docs:
+
+● Update(DEPLOY.md)
+  ⎿  Added 6 lines, removed 4 lines
+      135  
+      136  ## 9. Mail queue worker (once)
+      137  
+      138 -Mails sent by the application (an invoice sent from the admin,
+          - account mails,                                               
+      139 -notifications...) are put in the Messenger `async` queue (data
+          -base table                                                    
+      140 -`messenger_messages`). They only leave when the queue is proce
+          -ssed, so a                                                    
+      141 -scheduled task must run the worker.                           
+      138 +Mails are sent directly by default (account mails, login links
+          +, contact form,                                               
+      139 +an invoice sent from the admin, admin notifications...). Only 
+          +mass mailings, the                                            
+      140 +messages sent from the admin to many parents, are put in the M
+          +essenger `async`                                              
+      141 +queue (database table `messenger_messages`), one mail per reci
+          +pient. They only                                              
+      142 +leave when the queue is processed, so a scheduled task must ru
+          +n the worker.                                                 
+      143 +Invoices in bulk are not queued: they go through the invoice c
+          +ron (section 8).                                              
+      144  
+      145  In the OVH control panel, add a second scheduled task, like th
+           e invoice one:
+      146  
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Mail is now sent directly by default. Only messages from the admin to many
+  parents go through the queue, and invoices keep using the cron they already
+  had. All 28 tests pass and lint:container is clean.
+
+  How mail is sent now
+
+  ┌─────────────────────────────────┬───────────────────────────────────────┐
+  │              Mail               │             How it's sent             │
+  ├─────────────────────────────────┼───────────────────────────────────────┤
+  │ Account, login link, password   │                                       │
+  │ reset, contact form, admin      │ Directly, during the request          │
+  │ alerts, one invoice from the    │                                       │
+  │ admin                           │                                       │
+  ├─────────────────────────────────┼───────────────────────────────────────┤
+  │ Admin message to many parents   │ Through the async queue, one mail per │
+  │ (mercredi_message_new,          │  parent. The worker                   │
+  │ _new_jour, _new_groupescolaire) │ (bin/cron-messenger.php) sends them   │
+  │                                 │ within the hourly limit               │
+  ├─────────────────────────────────┼───────────────────────────────────────┤
+  │                                 │ No change: the mercredi:facture-send  │
+  │ All invoices for a month        │ cron sends them in batches of 40,     │
+  │                                 │ within the hourly limit               │
+  └─────────────────────────────────┴───────────────────────────────────────┘
+
+  Changes
+  - config/packages/messenger.yaml: I removed the SendEmailMessage: async
+    routing. Mail that isn't routed is sent right away.
+  - New Mailer/BulkMailer.php: it builds the mail once, then puts one copy per
+    address on the async queue. Empty and duplicate addresses are skipped. The
+    mail is built before queuing because the worker has no web request to build
+    it from.
+  - Message/Handler/MessageHandler.php: it now uses BulkMailer and returns how
+    many mails were queued.
+  - Message/Factory/EmailFactory.php: the attachment's content is now read when
+    the message is created. Before, the mail only kept the path to the uploaded
+    temporary file, which is deleted by the time the worker sends the mail, so
+    queued mails would have lost their attachment.
+  - Controller/Admin/MessageController.php: the confirmation now reads "N
+    mail(s) mis en file d'envoi, ils partiront dans les prochaines minutes"
+    instead of "envoyé", because the mails haven't left yet.
+  - Tests: a new tests/Mailer/BulkMailerTest.php checks that each address gets
+    one queued mail on async, with the content filled in. In MailDebuggerTest,
+    the routing check now expects direct sending.
+  - DEPLOY.md, section 9: updated to describe the new behaviour.
+
+  Things to know:
+  - The hourly limit: mail sent directly doesn't count toward the mailer hourly
+    limit. Only the queue worker and the invoice cron count. Normal traffic
+    (registrations, login links) is low, so I left it that way.
+  - Mail already in the queue: anything already waiting in async will still be
+    sent by the worker. Nothing is lost.
+  - Production still redirects all mail: when@prod in mailer.yaml still sends
+    every mail to webmaster@marche.be, as I flagged earlier. I left it alone.
+
+  I haven't committed anything. Your earlier fix (dec7cd4) was already in place.
+
+✻ Churned for 1m 59s · done 11:01 AM
+
+❯ add verbose error for 2 cron in bin                                           
+                                                                                
+  Suite à 10 erreurs d'exécution consécutives, une tâche planifiée (CRON) a été 
+  désactivée :                                                                  
+  Commande exécutée : bin/cron-facture.php                                      
+                                                                                
+  Ces erreurs d'exécution sont généralement causées par une anomalie dans le    
+  code ou un temps d'exécution trop long.                                       
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I'm moving the error handling into one shared file for both scripts, with
+  exception logging and a cron summary line, and stopping mercredi:facture-send
+  from hiding exception details. · summary
+
+● Write(bin/cron-bootstrap.php)
+  ⎿  Wrote 112 lines to bin/cron-bootstrap.php
+       1 <?php
+       2 
+       3 /**
+       4  * Lanceur commun aux scripts bin/cron-*.php (« Tâches planifiée
+         s (CRON) » d'OVH
+       5  * mutualisé, qui exécutent un fichier PHP sans arguments).
+       6  *
+       7  * Rend les erreurs lisibles dans les logs CRON d'OVH (hébergeme
+         nt → Plus → Logs) :
+       8  * - en-tête : date, PHP, environnement, limites ;
+     … +104 lines (ctrl+o to expand)
+
+● Write(bin/cron-facture.php)
+  ⎿  Added 3 lines, removed 15 lines
+       3  /**
+       4   * Point d'entrée pour les « Tâches planifiées (CRON) » d'OVH m
+          utualisé, qui
+       5   * exécutent un fichier PHP sans arguments. Lance la commande m
+          ercredi:facture-send.
+       6 + * Les erreurs détaillées sont dans les logs CRON d'OVH et résu
+         +mées dans var/log/cron.log.                                    
+       7   */
+       8  
+       8 -use App\Kernel;                                                
+       9 -use Symfony\Bundle\FrameworkBundle\Console\Application;        
+      10 -use Symfony\Component\Console\Input\ArrayInput;                
+      11 -use Symfony\Component\Console\Output\ConsoleOutput;            
+      12 -use Symfony\Component\Dotenv\Dotenv;                           
+       9 +require __DIR__.'/cron-bootstrap.php';                         
+      10  
+      14 -require dirname(__DIR__).'/vendor/autoload.php';               
+      15 -                                                               
+      16 -(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');             
+      17 -                                                               
+      18 -$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_
+         -DEBUG']);                                                      
+      19 -                                                               
+      20 -$application = new Application($kernel);                       
+      21 -$application->setAutoExit(false);                              
+      22 -                                                               
+      23 -exit($application->run(new ArrayInput(['command' => 'mercredi:f
+         -acture-send']), new ConsoleOutput()));                         
+      11 +run_cron('cron-facture', ['command' => 'mercredi:facture-send']
+         +);                                                             
+
+● Write(bin/cron-messenger.php)
+  ⎿  Added 6 lines, removed 18 lines
+       3  /**
+       4   * Point d'entrée pour les « Tâches planifiées (CRON) » d'OVH m
+          utualisé, qui
+       5   * exécutent un fichier PHP sans arguments. Traite la file Mess
+          enger « async »
+       6 - * (mails de l'application) pendant 55 minutes, au rythme permi
+         -s par le                                                       
+       7 - * limiteur « mailer » (MAILER_HOURLY_LIMIT mails par heure).  
+       6 + * (envois de masse : messages aux parents) pendant 55 minutes,
+         + au rythme permis                                              
+       7 + * par le limiteur « mailer » (MAILER_HOURLY_LIMIT mails par he
+         +ure).                                                          
+       8 + * Les erreurs détaillées sont dans les logs CRON d'OVH et résu
+         +mées dans var/log/cron.log.                                    
+       9   */
+      10  
+      10 -use App\Kernel;                                                
+      11 -use Symfony\Bundle\FrameworkBundle\Console\Application;        
+      12 -use Symfony\Component\Console\Input\ArrayInput;                
+      13 -use Symfony\Component\Console\Output\ConsoleOutput;            
+      14 -use Symfony\Component\Dotenv\Dotenv;                           
+      11 +require __DIR__.'/cron-bootstrap.php';                         
+      12  
+      16 -require dirname(__DIR__).'/vendor/autoload.php';               
+      17 -                                                               
+      18 -(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');             
+      19 -                                                               
+      20 -$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_
+         -DEBUG']);                                                      
+      21 -                                                               
+      22 -$application = new Application($kernel);                       
+      23 -$application->setAutoExit(false);                              
+      24 -                                                               
+      25 -exit($application->run(new ArrayInput([                        
+      13 +run_cron('cron-messenger', [                                   
+      14      'command' => 'messenger:consume',
+      15      'receivers' => ['async'],
+      16      // Lancé chaque heure : s'arrête avant le passage suivant
+      17      '--time-limit' => 3300,
+      18      '--memory-limit' => '128M',
+      31 -]), new ConsoleOutput()));                                     
+      19 +]);                                                            
+
+● Update(src/AcMarche/Mercredi/src/Command/SendFactureCommand.php)
+  ⎿  Added 5 lines, removed 1 line
+      46              $result = $this->factureCronHandler->execute((int) 
+          $input->getOption('max'));
+      47          } catch (\Throwable $exception) {
+      48              $failed = true;
+      49 -            $result = [['error' => $exception->getMessage()]]; 
+      49 +            $result = [['error' => $exception::class.': '.$exce
+         +ption->getMessage()]];                                         
+      50 +            $io->error(\sprintf('%s: %s at %s:%d', $exception::
+         +class, $exception->getMessage(), $exception->getFile(), $except
+         +ion->getLine()));                                              
+      51 +            if ($output->isVerbose()) {                        
+      52 +                $io->writeln($exception->getTraceAsString());  
+      53 +            }                                                  
+      54          } finally {
+      55              $lock->release();
+      56          }
+
+  Ran 1 shell command (ctrl+o to expand)
+  ⎿  Blocked by auto mode
+     │ Auto mode: [Destructive or Unwanted Actions]
+
+● Running the real invoice cron could send real invoices, so I'll test the
+  wrapper with harmless commands instead: one that works, one unknown command,
+  and one fatal error.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both the success and exception paths pass; the exit=0 from my test loop is a
+  shell quirk, and the script's own exit=1 line is correct. Next I'm triggering
+  a PHP fatal error with a very low memory limit. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Every path works: success, an exception, and a PHP fatal error all print what
+  happened in the output and add one line to var/log/cron.log. Adding a
+  troubleshooting note to DEPLOY.md:
+
+● Update(DEPLOY.md)
+  ⎿  Added 12 lines
+      133  The output of each scheduled run is in the OVH cron logs (host
+           ing → **More** →
+      134  **Logs**), and the report is mailed after each run that did so
+           mething.
+      135  
+      136 +Both cron scripts (`bin/cron-facture.php`, `bin/cron-messenger
+          +.php`) go through                                             
+      137 +`bin/cron-bootstrap.php`, which prints a START line (PHP versi
+          +on, `APP_ENV`,                                                
+      138 +`memory_limit`, `max_execution_time`), runs the command in ver
+          +bose mode, prints                                             
+      139 +any exception or PHP fatal error with file, line and stack tra
+          +ce, and ends with                                             
+      140 +an END line (exit code, duration, peak memory). A one-line sum
+          +mary of every run                                             
+      141 +is also appended to `var/log/cron.log`.                       
+      142 +                                                              
+      143 +OVH disables a scheduled task after 10 consecutive failed runs
+          + (exit code other                                             
+      144 +than 0, or too long). Read `var/log/cron.log` or the OVH cron 
+          +logs, fix the                                                 
+      145 +cause, run the script once by hand (`php bin/cron-facture.php`
+          +), then re-enable                                             
+      146 +the task in the OVH control panel.                            
+      147 +                                                              
+      148  ## 9. Mail queue worker (once)
+      149  
+      150  Mails are sent directly by default (account mails, login links
+           , contact form,
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The emailed report now includes the exception class, which this test didn't
+  expect. That's intended, so I'll update the test's expected value.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(sed -i "41s/\['error' => 'boom'\]/['error' => 'RuntimeException: boom']/"
+      tests/Command/SendFactureCommandTest.php && sed -n 36,48p
+      tests/Command/SendFactureCom…)
+  ⎿      public function testFailureIsReported(): void
+         {
+             $handler = $this->createMock(FactureCronHandler::class);
+     … +14 lines (ctrl+o to expand)
+  ⎿  Updated tests/Command/SendFactureCommandTest.php (+1 -1)
+      38      {
+      39          $handler = $this->createMock(FactureCronHandler::class)
+          ;
+      40          $handler->method('execute')->willThrowException(new \Ru
+          ntimeException('boom'));
+      41 -        $handler->expects(self::once())->method('sendResult')->
+         -with([['error' => 'boom']]);                                   
+      41 +        $handler->expects(self::once())->method('sendResult')->
+         +with([['error' => 'RuntimeException: boom']]);                 
+      42  
+      43          $tester = $this->createTester($handler);
+      44  
+
+● Both cron scripts now print detailed errors. That doesn't fix the failure OVH
+  reported: I couldn't see the real cause from here, and the next run's output
+  will show it.
+
+  What changed
+  - New bin/cron-bootstrap.php: both bin/cron-facture.php and
+    bin/cron-messenger.php now run through it. Each run prints:
+    - a START line with the date, PHP version, APP_ENV, APP_DEBUG, memory_limit,
+      max_execution_time, the working folder and the command;
+    - the command's own output, in verbose mode;
+    - for any error, the class, message, file and line, the full stack trace and
+      any underlying exception. This covers errors before the app even starts
+      (missing vendor/, bad .env.local, database), and PHP fatal errors such as
+      running out of memory or time;
+    - an END line with the exit code, duration and peak memory.
+  - var/log/cron.log: each run also adds one summary line there, which is
+    quicker to check than the OVH logs.
+  - Working folder: the script now switches to the project folder first, because
+    OVH starts it from the hosting root.
+  - SendFactureCommand: it used to keep only the exception message and drop the
+    rest. It now prints the class, file and line, plus the trace in verbose
+    mode. The emailed report now reads RuntimeException: boom instead of boom,
+    and I updated SendFactureCommandTest to match.
+  - DEPLOY.md: new notes on reading these logs and recovering a disabled cron.
+
+  Tests: I ran the wrapper with harmless commands, because running the real
+  invoice cron could send real invoices. A successful command exits 0. An
+  unknown command printed the exception with its trace and exited 1. A forced
+  out-of-memory error was reported as PHP FATAL ERROR ... at file:line and
+  exited 255. Each run added its line to cron.log. All 28 tests pass.
+
+  What to do on the server
+  1. Deploy, then run php bin/cron-facture.php once over SSH. The error should
+     show up right away.
+  2. Fix what it shows. OVH counts any non-zero exit code as a failed run, and
+     so does a run that takes too long.
+  3. Re-enable the cron in the OVH control panel. OVH doesn't turn it back on by
+     itself after disabling it.
+
+  If you paste the output here, I'll fix the cause.
+
+  Nothing is committed.
+
+✻ Churned for 1m 29s · done 11:15 AM
