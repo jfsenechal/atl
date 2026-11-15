@@ -3,7 +3,15 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        # 12 h d'inactivité avant expiration. Fichiers dans var/ : le dossier de session
+        # partagé de l'hébergeur serait purgé par d'autres sites avec leur propre durée.
+        handler_id: session.handler.native_file
+        save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
+        gc_maxlifetime: 43200
+        # Le nettoyage des vieux fichiers se fait au fil des requêtes (1 fois sur 100)
+        gc_probability: 1
+        gc_divisor: 100
 
     #esi: true
     #fragments: true
