@@ -114,12 +114,16 @@ Good to know:
 
 - `APP_ENV=prod`, `MAILER_DSN` and `LOCK_DSN` are read from `.env.local` on the
   server, as for the website.
-- On OVH shared hosting, use `MAILER_DSN=native://default` (PHP `mail()`,
-  relayed by OVH). Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`)
-  are refused ("Connection refused"), and any mail sent from an SSH session is
-  rejected ("User ... is not allowed to submit mail"), so `bin/console
-  mailer:test` over SSH proves nothing. The sender (`MERCREDI_FROM`) must be an
-  address of a domain hosted at OVH.
+- On OVH shared hosting, use `MAILER_DSN=ovh://default`: the `sendmail_path`
+  of php.ini, relayed by OVH, like `native://default`. Unlike `native://`, it
+  accepts sendmail's "exit code -1" when sendmail printed nothing. In OVH cron
+  tasks, PHP can't read sendmail's exit status, so `native://` reports a failure
+  for a mail that was actually sent, and Messenger then sends it again on retry.
+  Outgoing SMTP connections (`smtp://smtp.mail.ovh.net:465`) are refused
+  ("Connection refused"), and any mail sent from an SSH session is rejected
+  ("User ... is not allowed to submit mail"), so `bin/console mailer:test`
+  over SSH proves nothing. The sender (`MERCREDI_FROM`) must be an address of
+  a domain hosted at OVH.
 - To test mail in real cron conditions, create a temporary task running
   `bin/cron-mailtest.php`: it sends a test mail from and to `MERCREDI_FROM`.
   Check `var/log/cron.log` and `var/log/cron-cron-mailtest.last.log` after one
