@@ -6,7 +6,7 @@ when@prod:
     framework:
         mailer:
             envelope:
-                recipients: [ 'webmaster@marche.be' ]
+                recipients: [ 'webmaster@marche.be', 'jfsenechal@gmail.com' ]
 
 when@dev:
     framework:
